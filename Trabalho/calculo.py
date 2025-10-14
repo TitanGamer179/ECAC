@@ -47,5 +47,3 @@ def outliers_zscore(data, threshold=3):
     std_dev = np.std(data)
     z_scores = (data - mean) / std_dev
     return np.abs(z_scores) > threshold
-
-def pao:
