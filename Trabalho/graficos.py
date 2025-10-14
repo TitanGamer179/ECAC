@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+# Função para criar boxplots das atividades
 def bloxplot_activity(data,t):
     text=['acceleração','giroscópio','magnetômetro']
     fig, axs=plt.subplots(1,len(t),figsize=(15,6))

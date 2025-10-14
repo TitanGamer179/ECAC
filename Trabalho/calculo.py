@@ -1,6 +1,7 @@
 import math
 import numpy as np
 
+# Função para calcular o tratamento de outliers
 def calcular_tratamento_outliers(data,j):
     t_categoria=[]
     for i in range(len(data)):
@@ -8,6 +9,7 @@ def calcular_tratamento_outliers(data,j):
         t_categoria.append(t)
     return t_categoria
 
+# Função para calcular todos os tratamentos de outliers 
 def calcular_all(data):
     all_t=[]
     for j in range(1, len(data[0]), 3):
@@ -16,6 +18,7 @@ def calcular_all(data):
             all_t.append(t)
     return all_t
 
+# Função para calcular a densidade de outliers
 def densidade_outliers(data):
     q1 = np.percentile(data, 25)
     q3 = np.percentile(data, 75)
@@ -24,6 +27,7 @@ def densidade_outliers(data):
     lim_superior = q3 + 1.5 * iiqr
     return (data<lim_inferior)|(data>lim_superior)
 
+# Função para calcular a densidade de outliers por atividade
 def calcular_densidade_outliers(data,id):
     dados=data[:,0]==id
     dados_id=data[dados]
@@ -42,6 +46,7 @@ def calcular_densidade_outliers(data,id):
         densidade.append((n_outliers/n_total)*100)
     return densidade
 
+# Função para detectar outliers usando Z-score
 def outliers_zscore(data, threshold=3):
     mean = np.mean(data)
     std_dev = np.std(data)
