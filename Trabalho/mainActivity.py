@@ -21,6 +21,8 @@ def main():
     for i, d in enumerate(densidade):
        print(f"Atividade {i}: {d:.2f}%")
     #3.3 -  DETECÇÃO DE OUTLIERS - Z-SCORE
+    outliers=calculo.outliers_zscore(data12,3)
+    print(f"Número de outliers detectados: {np.sum(outliers)}")
     #3.4  - VISUALIZAÇÃO DE OUTLIERS Z-SCORE
     #3.5 - 3.1 VS 3.4
     #3.6 -k-Means

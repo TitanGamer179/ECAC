@@ -47,7 +47,7 @@ def calcular_densidade_outliers(data,id):
     return densidade
 
 # Função para detectar outliers usando Z-score
-def outliers_zscore(data, threshold=3):
+def outliers_zscore(data, threshold):
     mean = np.mean(data)
     std_dev = np.std(data)
     z_scores = (data - mean) / std_dev
