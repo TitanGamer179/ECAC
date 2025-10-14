@@ -1,6 +1,7 @@
 import openfile
 import calculo
 import graficos
+import numpy as np
 
 def main():
     #1 - Abrir os arquivos

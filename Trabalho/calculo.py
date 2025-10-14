@@ -29,15 +29,21 @@ def densidade_outliers(data):
 
 # Função para calcular a densidade de outliers por atividade
 def calcular_densidade_outliers(data,id):
-    dados=data[:,0]==id
-    dados_id=data[dados]
+    dados=[]
+    for linha in data:
+        if linha[0]==id:
+            dados.append(linha)
+    dados_id=np.array(dados)
     atividades=sorted(np.unique(dados_id[:,11]))
     densidade=[]
     for a in atividades:
-        i_ativ=dados_id[:,11]==a
-        mod_acc=dados_id[i_ativ,12]
-        mod_gyro=dados_id[i_ativ,13]
-        mod_mag=dados_id[i_ativ,14]
+        i_ativ=[]
+        for i in range(len(dados_id)):
+            if dados_id[i][11]==a:
+                i_ativ.append(i)
+        mod_acc=dados_id[i_ativ][12]
+        mod_gyro=dados_id[i_ativ][13]
+        mod_mag=dados_id[i_ativ][14]
         out_acc=densidade_outliers(mod_acc)
         out_gyro=densidade_outliers(mod_gyro)
         out_mag=densidade_outliers(mod_mag)
