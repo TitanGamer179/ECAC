@@ -24,7 +24,12 @@ def main():
     #3.3 -  DETECÇÃO DE OUTLIERS - Z-SCORE
     outliers=calculo.outliers_zscore(data12,3)
     print(f"Número de outliers detectados: {np.sum(outliers)}")
-    #3.4  - VISUALIZAÇÃO DE OUTLIERS Z-SCORE
+    #3.4  - VISUALIZAÇÃO DE OUTLIERS Z-SCORE k=3 e k=3,5 e k=4
+    outliers=[]
+    for k in [3, 3.5, 4]:
+        outliers.append(calculo.outliers_zscore(data12,k))
+        print(f"Número de outliers detectados com k={k}: {np.sum(outliers[-1])}")
+        graficos.scatter_outliers_zscore(data12, outliers[-1])
     #3.5 - 3.1 VS 3.4
     #3.6 -k-Means
     #3.7 Outliers k-Means
