@@ -1,5 +1,6 @@
 import csv
 import os
+import numpy as np
 
 # Função para abrir um arquivo CSV e retornar os dados como uma lista de listas
 def open_file(file_path):
@@ -16,6 +17,6 @@ def open_all_files(directory):
         quant_itens=len(os.listdir(os.path.join(directory, f"part{i}")))
         for j in range(1, quant_itens + 1):
             data = open_file(os.path.join(directory, f"part{i}/part{i}dev{j}.csv"))
-            data=[[float(valor) for valor in linha] for linha in data]
-            all_data.extend(data)
-    return all_data
+            data_float=[[float(valor) for valor in linha] for linha in data]
+            all_data.extend(data_float)
+    return np.array(all_data)
