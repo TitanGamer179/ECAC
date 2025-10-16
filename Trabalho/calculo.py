@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -49,3 +51,27 @@ def outliers_zscore(data, threshold):
             is_outlier = np.abs(z_scores) > threshold
             outliers[indices_ativ[is_outlier]] = True
     return outliers
+
+def aplicar_kmeans(data_3d, n_clusters):
+    print(f"A aplicar o k-means com n={n_clusters} clusters...")
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
+    labels = kmeans.fit_predict(data_3d)
+    print("K-means aplicado com sucesso.")
+    return labels
+
+def identificar_outliers_kmeans(labels, min_size_percent=1.0):
+    print("A identificar outliers com base nos clusters do k-means...")
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    min_cluster_size = len(labels) * (min_size_percent / 100.0)
+    outlier_clusters = unique_labels[counts < min_cluster_size]
+    is_outlier_mask = np.isin(labels, outlier_clusters)
+    print(f"Identificados {len(outlier_clusters)} clusters de outliers (com menos de {min_cluster_size:.0f} pontos).")
+    return is_outlier_mask
+
+def aplicar_dbscan(data_3d, eps=0.5, min_samples=15):
+    print(f"A aplicar o DBSCAN com eps={eps} e min_samples={min_samples}...")
+    db = DBSCAN(eps=eps, min_samples=min_samples)
+    labels = db.fit_predict(data_3d)
+    is_outlier_mask = (labels == -1)
+    print("DBSCAN aplicado com sucesso.")
+    return is_outlier_mask
