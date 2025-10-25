@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
+from scipy.stats import kstest
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -75,3 +76,25 @@ def aplicar_dbscan(data_3d, eps=0.5, min_samples=15):
     is_outlier_mask = (labels == -1)
     print("DBSCAN aplicado com sucesso.")
     return is_outlier_mask
+
+
+def testes_significativos(data):
+    print("A realizar testes de significância estatística...")
+    #Primeiro, começamos for verificar a normalidade da distribuição com o teste Kolmogorov-Smirnov
+    dispositivos=sorted(np.unique(data[:,0]))
+    atividades=sorted(np.unique(data[:,11]))
+    for disp in dispositivos:
+        print(f"\nA analisar dispositivo {int(disp)}:")
+        
+        disp_dados = data[data[:,0]==disp]
+        for var, nome in nomes_variaveis.items():
+            print(f"\n Variável: {nome}")
+            dados_agrupados= []
+            
+            isNormal=True
+            for ativ in atividades:
+                dados_ativ= disp_dados[disp_dados[:,11]==ativ]
+                dados_agrupados.append(dados_ativ)
+                
+        
+    

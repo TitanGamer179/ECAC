@@ -72,6 +72,9 @@ def main():
     print("\nAnálise concluída.")
     #4
     #4.1 TESTE DE SIGNIFICÂNCIA ESTATÍSTICA
+    print("\n--- Requisitos 4.1: Significância estatística dos valores médios ---")
+    calculo.testes_significativos(all_data_with_magnitudes, device_id=2, activity_id=4)
+    
     #4.2 EXTRAÇÃO DE FEATURES TEMPORAIS E ESPECTRAIS
     #4.3 e 4.4 PCA
     #4.5 e 4.6 Score e relieff
