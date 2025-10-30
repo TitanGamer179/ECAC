@@ -1,7 +1,9 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from scipy.stats import kstest, shapiro, f_oneway, kruskal
+from scipy.stats import kstest, f_oneway, kruskal
+from scipy.fft import fft, fftfreq
+from scipy.stats import skew, kurtosis
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -91,7 +93,7 @@ def testes_significativos(data):
         print(f"\nA analisar o dispositivo {int(disp)}:")
         
         disp_dados = data[data[:,0]==disp]
-        for var_inx, var_nome in variaveis.items():
+        for var_idx, var_nome in variaveis.items():
             print(f"\n Variável: {var_nome}")
             
             dadospor_atividade = []
@@ -136,4 +138,118 @@ def testes_significativos(data):
                 print(f"{ativ:<10} {np.mean(dados):<15.4f} {np.std(dados):<15.4f} {np.min(dados):<15.4f} {np.max(dados):<15.4f}")
                 
         
-                    
+def features_temporais(segmento):
+    mean_val=0
+    features= []
+    for col in range(1,10):
+        dados= segmento[:,col]
+        N= len(dados)
+        
+        features.append(np.mean(dados))
+        features.append(np.median(dados))
+        features.append(np.std(dados))
+        features.append(np.var(dados))
+        features.append(np.sqrt(np.mean(dados**2)))
+
+        if N >1:
+            features.append(np.mean(np.diff(dados)))
+        else:
+            features.append(0)
+
+        features.append(skew(dados))
+        features.append(kurtosis(dados))
+        
+        q75,q25= np.percentile(dados, [75 ,25])
+        features.append(q75-q25)
+        
+        if N>1:
+            zcr= np.sum(np.diff(np.sign(dados))!=0)/(N-1)
+            features.append(zcr)
+            
+            mean_val= np.mean(dados)
+            mcr= np.sum(np.diff(np.sign(dados - mean_val))!=0)/(N-1)
+            features.append(mcr)
+        else:
+            features.append(0)
+            features.append(0)
+            
+    dados_todos_eixos=segmento[:,1:10]
+    try:
+        coor_matrix_total = np.corrcoef(dados_todos_eixos, rowvar=False)
+        coor_matrix =np.nan_to_num(coor_matrix_total)
+        indices_superior= np.triu_indices(9, k=1)
+        features.extend(coor_matrix[indices_superior])
+    except:
+        features.extend([0]*36)
+        
+    return np.array(features)
+
+def features_espectrais(segmento, fs=50):
+    features = []
+    for col in range (1,10):
+        dados = segmento[:,col]
+        N= len(dados)
+        
+        fft_vals = fft(dados)
+        fft_mag =np.abs(fft_vals[:N//2])
+    
+        if np.sum(fft_mag) > 0:
+            fft_mag_norm= fft_mag /np.sum(fft_mag)
+        else:
+            fft_mag_norm= fft_mag
+            
+        fft_mag_pos = fft_mag_norm[fft_mag_norm >0]
+        if len(fft_mag_pos) >0:
+            entropia= -np.sum(fft_mag_pos * np.log2(fft_mag_pos))
+            features.append(entropia)
+        else:
+            features.append(0)
+    return np.array(features)
+
+def segmentation(data, janela_size=5, overlap= 0.5, fs=50):
+    print("A segmentar os dados...\n")
+    
+    tam_janela= int(janela_size*fs)
+    passo= int(tam_janela * (1-overlap))
+    
+    segmentos= []
+    labels= []
+    dispositivos= []
+    data_sorted= data[data[:,10].argsort()]
+    for disp_id in np.unique(data_sorted[:,0]):
+        disp_data= data_sorted[data_sorted[:,0]==disp_id]
+        i=0
+        while i+tam_janela <=len(disp_data):
+            segmento= disp_data[i:i+tam_janela]
+            atividades_seg = np.unique(segmento[:,11])
+            
+            if len(atividades_seg)==1:
+                segmentos.append(segmento)
+                labels.append(atividades_seg[0])
+                dispositivos.append(disp_id)
+            i += passo
+    print(f"Segmentação concluída: {len(segmentos)} segmentos criados.\n")
+    return segmentos, np.array(labels), np.array(dispositivos)
+        
+def extrair_features(data):
+    segmentos,labels,dispositivos= segmentation(data)
+
+    if len(segmentos)==0:
+        print("Não foi encontrado nenhum segmento!\n")
+        return None, None, None
+    
+    print("A extrair features de cada segmento...\n")
+    features_matrix= []
+    for i, seg in enumerate(segmentos):
+        if i%100==0:
+            print(f"Processados {i} de {len(segmentos)} segmentos...")
+        feat_temp= features_temporais(seg)
+        feat_spec= features_espectrais(seg)
+        features_complete= np. concatenate((feat_temp, feat_spec))
+        features_matrix.append(features_complete)
+        
+    return np.array(features_matrix), np.array(labels), np.array(dispositivos)
+        
+    
+            
+           
