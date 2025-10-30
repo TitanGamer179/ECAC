@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from scipy.stats import kstest
+from scipy.stats import kstest, shapiro, f_oneway, kruskal
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -83,18 +83,57 @@ def testes_significativos(data):
     #Primeiro, começamos for verificar a normalidade da distribuição com o teste Kolmogorov-Smirnov
     dispositivos=sorted(np.unique(data[:,0]))
     atividades=sorted(np.unique(data[:,11]))
+    variaveis={
+        12: 'Módulo Aceleração',
+        13: 'Módulo Giroscópio',
+        14: 'Módulo Magnetómetro'}
     for disp in dispositivos:
-        print(f"\nA analisar dispositivo {int(disp)}:")
+        print(f"\nA analisar o dispositivo {int(disp)}:")
         
         disp_dados = data[data[:,0]==disp]
-        for var, nome in nomes_variaveis.items():
-            print(f"\n Variável: {nome}")
-            dados_agrupados= []
+        for var_inx, var_nome in variaveis.items():
+            print(f"\n Variável: {var_nome}")
             
-            isNormal=True
+            dadospor_atividade = []
+            atividades_normais=[]
+            print("A realizar o teste de Kolmogorov-Smirnov para cada atividade:\n")
+            todasNormais=True
             for ativ in atividades:
-                dados_ativ= disp_dados[disp_dados[:,11]==ativ]
-                dados_agrupados.append(dados_ativ)
+                dados_ativ= disp_dados[disp_dados[:,11]==ativ, var_idx]
+                if len(dados_ativ)>7: #?? não se este número é adequado
+                    dados_norm = (dados_ativ - np.mean(dados_ativ)) / np.std(dados_ativ)
+                    ks_stat, p_value = kstest(dados_norm, 'norm')
+                    is_normal= p_value > 0.05
+                    
+                    if not is_normal:
+                        todasNormais= False
+                        
+                    dadospor_atividade.append(dados_ativ)
+                    atividades_normais.append(int(ativ))
+                    
+        print("Vamos testar as significâncias para todas as atividades normais:\n")
+        
+        if len(dadospor_atividade)>=2:
+            if todasNormais:
+                print("Todas as atividades seguem uma distribuição normal. A realizar ANOVA...\n")
+                f_stat, p_value = f_oneway(*dadospor_atividade)
+                if p_value <0.05:
+                    print("Diferença significativa encontrada entre as atividades (p < 0.05) usando ANOVA.")
+                else:
+                    print("Nenhuma diferença significativa encontrada entre as atividades (p >= 0.05) usando ANOVA.")
+            else:
+                print("Nem todas as atividades têm distribuição normal. A realizar o teste de Kruskal-Wallis...\n")
+                h_stat, p_value= kruskal(*dadospor_atividade)
+                if p_value <0.05:
+                    print("Diferença significativa encontrada entre as atividades (p < 0.05) usando Kruskal-Wallis.")
+                else:
+                    print("Nenhuma diferença significativa encontrada entre as atividades (p >= 0.05) usando Kruskal-Wallis.")
+                    
+            print("Estatísticas descritivas por atividade:\n")
+            print(f"{'Atividade':<10} {'Média':<15} {'Mediana':<15} {'Desvio Padrão':<15}")
+            for i, ativ in enumerate(atividades_normais):
+                dados = dadospor_atividade[i]
+                print(f"{ativ:<10} {np.mean(dados):<15.4f} {np.std(dados):<15.4f} {np.min(dados):<15.4f} {np.max(dados):<15.4f}")
                 
         
-    
+                    
