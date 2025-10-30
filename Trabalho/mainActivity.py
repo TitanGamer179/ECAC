@@ -37,9 +37,13 @@ def main():
     for k in [3, 3.5, 4]:
         print(f"A calcular outliers para k={k}...")
         outliers_mask = calculo.outliers_zscore(device_data, k)
-        graficos.scatter_3d_outliers_zscore(device_data, outliers_mask)
+        for col_idx, name in magnitudes_info.items():
+            print(f"A gerar gráfico 2D para {name} com k={k}...")
+            graficos.scatter_outliers_zscore(device_data, outliers_mask, k, col_idx, name)
     print("Gráficos gerados com sucesso!")
     # 3.5 - 3.1 VS 3.4
+    print("\n--- Requisito 3.5: Comparação Boxplots vs Outliers Z-Score ---")
+    print("Os dois métodos discordam drasticamente sobre o que é um outlier, especialmente em atividades de transição e estáticas, porque o Z-Score assume uma distribuição de dados (normal) que os dados reais não seguem. Boxplots fornecem uma visão mais robusta dos dados, enquanto o Z-Score pode ser enganoso em distribuições não normais.")
     #3.6 -k-Means
     print("\n--- Requisito 3.6: Implementação e Visualização do k-Means ---")
     device_id = 2      

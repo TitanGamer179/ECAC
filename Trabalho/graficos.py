@@ -52,21 +52,6 @@ def boxplot_all_devices(all_data):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
     
-def scatter_3d_outliers_zscore(all_data, outliers_mask):
-    from mpl_toolkits.mplot3d import Axes3D  # Import necessário para gráficos 3D
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    inlier_data = all_data[~outliers_mask]
-    outlier_data = all_data[outliers_mask]
-    ax.scatter(inlier_data[:, 12], inlier_data[:, 13], inlier_data[:, 14], color='blue', label='Inliers', alpha=0.5, s=10)
-    ax.scatter(outlier_data[:, 12], outlier_data[:, 13], outlier_data[:, 14], color='red', label='Outliers', marker='x')
-    ax.set_title('Deteção de Outliers com Z-Score - Gráfico 3D')
-    ax.set_xlabel('Módulo de Aceleração')
-    ax.set_ylabel('Módulo de Giroscópio')
-    ax.set_zlabel('Módulo de Magnetómetro')
-    ax.legend()
-    plt.show()
-    
 def visualizar_outliers_3d(data_3d, outliers_mask, title):
     fig = plt.figure(figsize=(12, 9))
     ax = fig.add_subplot(111, projection='3d')
