@@ -1,1 +1,0 @@
-3.5-Os dois métodos discordam drasticamente sobre o que é um outlier, especialmente em atividades de transição e estáticas, porque o Z-Score assume uma distribuição de dados (normal) que os dados reais não seguem. Boxplots fornecem uma visão mais robusta dos dados, enquanto o Z-Score pode ser enganoso em distribuições não normais.
