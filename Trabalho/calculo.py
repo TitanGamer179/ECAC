@@ -82,44 +82,54 @@ def aplicar_dbscan(data_3d, eps=0.5, min_samples=15):
     print("DBSCAN aplicado com sucesso.")
     return is_outlier_mask
 
+#Testes signitificativos para a alínea 4.1. 
+#Estes testes ajudam-nos a determinar se as diferenças que encontramos entre os valores
+#das variáveis nas diferentes atividades se devem a algum erro nos dados ou a um valor específico.
+#Primeiro, começamos por verificar a normalidade dos dados com o teste indicado pelo professor (Kolmogorov-Smirnov).
+#De seguida, dependendo do resultado, vamos aplicar um teste estatístico específico.
 
 def testes_significativos(data):
     print("A realizar testes de significância estatística...")
-    #Primeiro, começamos for verificar a normalidade da distribuição com o teste Kolmogorov-Smirnov
-    dispositivos=sorted(np.unique(data[:,0]))
-    atividades=sorted(np.unique(data[:,11]))
-    variaveis={
+    #Primeiro, começamos for verificar a normalidade dos dados com o teste Kolmogorov-Smirnov
+    dispositivos=sorted(np.unique(data[:,0])) #vamos buscar os valores únicos à coluna0, que contém os dispositivos
+    atividades=sorted(np.unique(data[:,11]))#organizamos os dads em ordem ascendente
+    variaveis={ #criamos um dicionário para facilitar o mapeamento 
         12: 'Módulo Aceleração',
         13: 'Módulo Giroscópio',
         14: 'Módulo Magnetómetro'}
-    for disp in dispositivos:
+    for disp in dispositivos: #vamos percorrer cada dispositivo ID
         print(f"\nA analisar o dispositivo {int(disp)}:")
         
-        disp_dados = data[data[:,0]==disp]
-        for var_idx, var_nome in variaveis.items():
+        disp_dados = data[data[:,0]==disp] #filtramos o array original para termos os dados de apenas um dispositivo
+        for var_idx, var_nome in variaveis.items(): #vamos percorrer cad avariável do dicionário
+        #var_idx: índice da coluna; var_nome: nome da variável
             print(f"\n Variável: {var_nome}")
             
-            dadospor_atividade = []
-            atividades_normais=[]
+            dadospor_atividade = [] #vamos guardar os dados de cada atividade aqui
+            atividades_normais=[] #vamos guardar as atividades com dados relevantes
             print("A realizar o teste de Kolmogorov-Smirnov para cada atividade:\n")
-            todasNormais=True
-            for ativ in atividades:
-                dados_ativ= disp_dados[disp_dados[:,11]==ativ, var_idx]
-                if len(dados_ativ)>7: #?? não se este número é adequado
+            todasNormais=True #assumimos que os dados têm uma distribuição normal
+            for ativ in atividades: #vamos percorrer cada atividade
+                dados_ativ= disp_dados[disp_dados[:,11]==ativ, var_idx] #filtramos os dados para a atividade específica
+                if len(dados_ativ)>2: #Verificamos se temos dados suficientes para o teste
                     # Normalizar dados para o teste KS
                     if np.std(dados_ativ) > 0:
-                        dados_norm = (dados_ativ - np.mean(dados_ativ)) / np.std(dados_ativ)
-                        ks_stat, p_value = kstest(dados_norm, 'norm')
+                        dados_norm = (dados_ativ - np.mean(dados_ativ)) / np.std(dados_ativ) 
+                        #Temos de alterar a mean e std dos nossos dados 
+                        #para 0 e 1, para conseguirmos fazer uma comparação com o standart
+                        #o teste KS compara a distribuição empírica dos dados com uma distribuição 
+                        #normal teórica.
+                        ks_stat, p_value = kstest(dados_norm, 'norm') #teste KS
                     else:
                         p_value = 1.0 # Dados constantes, tecnicamente não violam a normalidade
                         
-                    is_normal= p_value > 0.05
+                    is_normal= p_value > 0.05 #os dados são normais, a hipótese H0 é aceite
                     
                     if not is_normal:
-                        todasNormais= False
+                        todasNormais= False #se a condição H0 falhar, os dados não seguem uma distribuição normal
                         
-                    dadospor_atividade.append(dados_ativ)
-                    atividades_normais.append(int(ativ))
+                    dadospor_atividade.append(dados_ativ) #guardamos os dados da atividade atual
+                    atividades_normais.append(int(ativ)) #guardamos os labels das atividades
             
             # Verificar se temos dados suficientes para os testes
             if len(dadospor_atividade) < 2:
@@ -127,15 +137,19 @@ def testes_significativos(data):
                 continue
                 
             print("Vamos testar as significâncias para todas as atividades válidas:\n")
-        
-            if todasNormais:
+
+            #Se os dados tiverem uma distribuição normal, utiliza-se o teste estatístico ANOVA
+            if todasNormais: 
                 print("Todas as atividades seguem uma distribuição normal. A realizar ANOVA...\n")
-                f_stat, p_value = f_oneway(*dadospor_atividade)
+                f_stat, p_value = f_oneway(*dadospor_atividade) #realizamos o teste ANOVA
+                #a sintaxe *dadospor_atividade serve para desempacotar a lista de arrays
+                #O objetivo deste teste é comparar as médias das diferentes atividades
                 if p_value <0.05:
                     print(f"Diferença significativa encontrada (p={p_value:.4e}) usando ANOVA.")
                 else:
                     print(f"Nenhuma diferença significativa encontrada (p={p_value:.4f}) usando ANOVA.")
-            else:
+                    
+            else:  
                 print("Nem todas as atividades têm distribuição normal. A realizar o teste de Kruskal-Wallis...\n")
                 h_stat, p_value= kruskal(*dadospor_atividade)
                 if p_value <0.05:
