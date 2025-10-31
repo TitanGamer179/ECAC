@@ -4,11 +4,14 @@ import graficos
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
 
 
 def main():
     # 1 - Abrir os ficheiros
-    all_data = openfile.open_all_files('C:\\Users\\titin\\Downloads\\vscode\\ecac\\ECAC\\Trabalho\\diretoria')
+    dir_=os.path.dirname(os.path.abspath(__file__))
+    dir_path=os.path.join(dir_,'diretoria')
+    all_data = openfile.open_all_files(dir_path)
     if all_data.size == 0:
         print("Nenhum dado foi carregado. Verifique o caminho da diretoria.")
         return
