@@ -210,16 +210,7 @@ def main():
     print("="*80)
     
     try:
-        np.savez('resultados_analise.npz',
-                 feature_matrix=feature_matrix,
-                 labels=labels,
-                 dispositivos=dispositivos,
-                 features_pca=features_pca,
-                 fisher_scores=fisher_scores,
-                 fisher_ranking=fisher_ranking,
-                 relieff_weights=relieff_weights,
-                 relieff_ranking=relieff_ranking,
-                 pc_75=pc_75)
+        np.savez('resultados_analise.npz',feature_matrix=feature_matrix,labels=labels,dispositivos=dispositivos,features_pca=features_pca,fisher_scores=fisher_scores,fisher_ranking=fisher_ranking,relieff_weights=relieff_weights,relieff_ranking=relieff_ranking,pc_75=pc_75)
         print("✓ Resultados guardados em 'resultados_analise.npz'")
     except Exception as e:
         print(f"✗ Erro ao guardar resultados: {e}")
