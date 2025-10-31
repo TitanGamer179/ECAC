@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 # Função para criar boxplots das atividades
 def boxplot_activity(all_data):
@@ -77,14 +78,117 @@ def visualizar_clusters_kmeans_3d(data_3d, labels, n_clusters, title):
     legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
     ax.add_artist(legend1)
     plt.show()
+
+#Vamos criar um boxplot (para verificar os testes estatísticos) e histogramas(para ajudar com a vizualização do ktest)
+def plot_testes_significativos_mpl(data):
+    print("A gerar gráficos de justificação (Matplotlib) para a Alínea 4.1...")
+    variaveis = {
+        12: 'Módulo Aceleração',
+        13: 'Módulo Giroscópio',
+        14: 'Módulo Magnetómetro'
+    }
     
+    #Histograma
+    dados_para_hist = []
+    labels_para_hist = []
+            
+    for ativ in atividades:
+        dados_ativ = disp_dados[disp_dados[:, 11] == ativ, var_idx]
+        # Só plotamos se tivermos dados suficientes 
+        if len(dados_ativ) > 2:
+            dados_para_hist.append(dados_ativ)
+            labels_para_hist.append(int(ativ))
+            
+        if not dados_para_hist:
+            print(f"Sem dados para plotar histogramas para {var_nome}")
+            continue
+                
+        # Calcular o tamanho da grelha 
+        n_plots = len(labels_para_hist)
+        n_cols = 4
+        n_rows = int(np.ceil(n_plots / n_cols))
+            
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, 4 * n_rows))
+        axes = axes.flatten() 
+            
+        for i in range(n_plots):
+            ax = axes[i] # O 'eixo' (área de plotagem) atual
+            dados_ativ = dados_para_hist[i]
+            label_ativ = labels_para_hist[i]
+                
+            ax.hist(dados_ativ, bins=30, alpha=0.7, density=True, label='Dados')
+                
+            #Tentar sobrepor a curva normal ideal (o que o kstest compara)
+            if np.std(dados_ativ) > 0:
+                try:
+                    mu, std = stats.norm.fit(dados_ativ) # Encontra a média e std
+                    xmin, xmax = ax.get_xlim()
+                    x = np.linspace(xmin, xmax, 100)
+                    p = stats.norm.pdf(x, mu, std) # Cria a curva normal
+                    ax.plot(x, p, 'r--', linewidth=2, label='Curva Normal')
+                except Exception:
+                    pass # Ignora se o 'fit' falhar
+
+            ax.set_title(f'Atividade {label_ativ}')
+            ax.set_xlabel(var_nome)
+            ax.set_ylabel('Densidade')
+                
+            # Ocultar subplots que não foram usados
+            for j in range(n_plots, len(axes)):
+                axes[j].set_visible(False)
+            
+            fig.suptitle(f'Verificação de Normalidade para {var_nome}\nDispositivo {int(disp)}', 
+                           y=1.03, fontsize=16)
+        plt.tight_layout()
+        plt.show()
+        
+    #Boxplots
+    dispositivos = sorted(np.unique(data[:, 0]))
+    atividades = sorted(np.unique(data[:, 11])) # Lista de todas as IDs de atividades
+    for disp in dispositivos:
+        print(f"\n--- A gerar gráficos para o Dispositivo {int(disp)} ---")
+        
+        # Filtrar dados para o dispositivo atual
+        disp_dados = data[data[:, 0] == disp]
+        
+        for var_idx, var_nome in variaveis.items():
+            
+            print(f"A processar variável: {var_nome}")
+            
+            dados_para_boxplot = []
+            labels_para_boxplot = []
+            
+            for ativ in atividades:
+                # Extrai os dados para esta atividade e variável
+                dados_ativ = disp_dados[disp_dados[:, 11] == ativ, var_idx]
+                if len(dados_ativ) > 0:
+                    dados_para_boxplot.append(dados_ativ)
+                    labels_para_boxplot.append(int(ativ)) # Guarda o ID da atividade
+            
+            if not dados_para_boxplot:
+                print(f"Sem dados para plotar boxplot para {var_nome}")
+                continue
+
+            plt.figure(figsize=(16, 7))
+            # Criar o boxplot
+            plt.boxplot(dados_para_boxplot)
+            
+            # Definir os rótulos do eixo X para corresponderem às atividades
+            plt.xticks(range(1, len(labels_para_boxplot) + 1), labels_para_boxplot)
+            
+            plt.title(f'Comparação de Atividades para {var_nome}\nDispositivo {int(disp)}', fontsize=16)
+            plt.xlabel('ID da Atividade', fontsize=12)
+            plt.ylabel(var_nome, fontsize=12)
+            plt.grid(True, alpha=0.3, axis='y')
+            plt.tight_layout()
+            plt.show()
+
+            
+#Gráfico que destaca a importância de cada vetor, mostrando exatamente onde é que +e atingido o 75%          
 def plot_variancia_explicada_pca(pca, pc_75=None):
-    """
-    Plota a variância explicada por cada componente principal.
-    """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
-    # Gráfico 1: Variância explicada por componente
+    # Variância explicada por componente
     n_components = len(pca.explained_variance_ratio_)
     ax1.bar(range(1, n_components+1), pca.explained_variance_ratio_ * 100)
     ax1.set_xlabel('Componente Principal')
@@ -96,7 +200,7 @@ def plot_variancia_explicada_pca(pca, pc_75=None):
         ax1.axvline(x=pc_75, color='r', linestyle='--', label=f'75% variância (PC{pc_75})')
         ax1.legend()
     
-    # Gráfico 2: Variância acumulada
+    # Variância acumulada
     var_acumulada = np.cumsum(pca.explained_variance_ratio_) * 100
     ax2.plot(range(1, n_components+1), var_acumulada, 'b-o', linewidth=2, markersize=4)
     ax2.axhline(y=75, color='r', linestyle='--', label='75%')
@@ -113,10 +217,8 @@ def plot_variancia_explicada_pca(pca, pc_75=None):
     plt.tight_layout()
     plt.show()
 
+#Gr´´afico que mostra o resultado da compressão aplicada aos segmentos
 def plot_pca_2d(features_pca, labels, title="Visualização PCA 2D"):
-    """
-    Visualiza os dados em 2D usando os dois primeiros componentes principais.
-    """
     plt.figure(figsize=(12, 8))
     
     # Mapear labels para cores
@@ -138,9 +240,6 @@ def plot_pca_2d(features_pca, labels, title="Visualização PCA 2D"):
     plt.show()
 
 def plot_pca_3d(features_pca, labels, title="Visualização PCA 3D"):
-    """
-    Visualiza os dados em 3D usando os três primeiros componentes principais.
-    """
     fig = plt.figure(figsize=(14, 10))
     ax = fig.add_subplot(111, projection='3d')
     
@@ -162,10 +261,8 @@ def plot_pca_3d(features_pca, labels, title="Visualização PCA 3D"):
     plt.tight_layout()
     plt.show()
 
+#Gráficos que plotam os scores das N melhores features
 def plot_fisher_scores(fisher_scores, top_n=20):
-    """
-    Plota os Fisher Scores das top N features.
-    """
     # Ordenar scores
     sorted_indices = np.argsort(fisher_scores)[::-1][:top_n]
     sorted_scores = fisher_scores[sorted_indices]
@@ -191,9 +288,7 @@ def plot_fisher_scores(fisher_scores, top_n=20):
         print(f"{i+1}. Feature {sorted_indices[i]}: {sorted_scores[i]:.4f}")
 
 def plot_relieff_weights(relieff_weights, top_n=20):
-    """
-    Plota os pesos do ReliefF das top N features.
-    """
+
     # Ordenar weights
     sorted_indices = np.argsort(relieff_weights)[::-1][:top_n]
     sorted_weights = relieff_weights[sorted_indices]
@@ -218,17 +313,16 @@ def plot_relieff_weights(relieff_weights, top_n=20):
     for i in range(min(10, top_n)):
         print(f"{i+1}. Feature {sorted_indices[i]}: {sorted_weights[i]:.4f}")
 
+#Gráfico que compara os resultados de maneira visual, utilizando um diagrama de Venn para mostrar as features mais comuns
 def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
-    """
-    Compara visualmente os rankings do Fisher Score e ReliefF.
-    """
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
     # Top N de cada método
     top_fisher = fisher_ranking[:top_n]
     top_relieff = relieff_ranking[:top_n]
     
-    # Gráfico 1: Features selecionadas por Fisher
+    # Features selecionadas por Fisher
     ax1.barh(range(top_n), range(top_n, 0, -1), color='steelblue', alpha=0.7)
     ax1.set_yticks(range(top_n))
     ax1.set_yticklabels([f'F{top_fisher[i]}' for i in range(top_n)])
@@ -237,7 +331,7 @@ def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
     ax1.invert_xaxis()
     ax1.grid(True, alpha=0.3, axis='x')
     
-    # Gráfico 2: Features selecionadas por ReliefF
+    # Features selecionadas por ReliefF
     ax2.barh(range(top_n), range(1, top_n+1), color='forestgreen', alpha=0.7)
     ax2.set_yticks(range(top_n))
     ax2.set_yticklabels([f'F{top_relieff[i]}' for i in range(top_n)])
@@ -248,7 +342,7 @@ def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
     plt.tight_layout()
     plt.show()
     
-    # Diagrama de Venn (features comuns)
+    # Diagrama de Venn 
     set_fisher = set(top_fisher)
     set_relieff = set(top_relieff)
     comum = set_fisher & set_relieff
@@ -280,23 +374,3 @@ def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
     
     print(f"\n{len(comum)} features comuns: {sorted(comum)}")
 
-def plot_matriz_correlacao_features(feature_matrix, feature_indices, labels_list):
-    """
-    Plota matriz de correlação entre features selecionadas.
-    """
-    features_selecionadas = feature_matrix[:, feature_indices]
-    
-    # Calcular correlação
-    corr_matrix = np.corrcoef(features_selecionadas.T)
-    
-    plt.figure(figsize=(12, 10))
-    im = plt.imshow(corr_matrix, cmap='coolwarm', vmin=-1, vmax=1, aspect='auto')
-    plt.colorbar(im, label='Correlação')
-    
-    # Labels
-    plt.xticks(range(len(feature_indices)), [f'F{i}' for i in feature_indices], rotation=45)
-    plt.yticks(range(len(feature_indices)), [f'F{i}' for i in feature_indices])
-    
-    plt.title('Matriz de Correlação - Features Selecionadas')
-    plt.tight_layout()
-    plt.show()
