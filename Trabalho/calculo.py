@@ -6,6 +6,7 @@ from scipy.fft import fft
 from scipy.stats import skew, kurtosis
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -285,6 +286,249 @@ def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None)
     if n_components_75:
         features_pca_75= features_pca_full[0, :n_components_75]
         print(f"Features PCA (75% variação) para o exemplo {idx_exemplo}:\n{features_pca_75}\n")
+        
+        
+def fisher_score(features, labels):
+    n_features= features.shape[1]
+    n_classes= len(np.unique(labels))
+    fisher_scores= np.zeros(n_features)
+    
+    mean_global= np.mean(features, axis=0)
+    
+    for i in range(n_features):
+        features_col = features[:,i]
+        
+        sb=0
+        for classe in np.unique(labels):
+            indices_classe= labels ==classe
+            n_classe= np.sum(indices_classe)
+            mean_classe= np.mean(features_col[indices_classe])
+            sb += n_classe* (mean_classe - mean_global[i]**2)
+            
+        sw=0
+        for classe in np.unique(labels):
+            indices_classe= labels ==classe
+            feature_classe=labels ==classe
+            sw +=np.sum((feature_classe - np.mean(feature_classe))**2)
+
+        if sw>0:
+            fisher_score[i]= sb/sw
+        else:
+            fisher_score[i]=0
+    
+    ranking= np.argsort(fisher_scores)[::-1]
+    for i in range(min(10,len(ranking)):
+        idx= ranking[i]
+        print(f"{i+1:<6} {idx:<12}{fisher_scores[idx]:<15.6f}"))
+    return fisher_scores, ranking
+
+def relieff(features, labels, k=10):
+    n_samples, n_features= features.shape
+    weights= np.zeros(n_features)
+    
+    scaler= MinMaxScaler()
+    features_norm= scaler.fit_transform(features)
+    
+    n_iterations = min(n_samples,500)
+    indices = np.random.choice(n_samples, n_iterations, replace=False)
+    
+    for iter_idx, i in enumerate(indices):
+        if iter_idx %100 ==0:
+            print(f"Processamento da amostra {iter_idx}/{n_iterations}")
+        sample= features_norm[i]
+        sample_label= labels[i]
+        
+        distances = np.sqrt(np.sum((features_norm- sample)**2, axis=1))
+        distances[i]= np.inf
+        
+        same_class_mask = labels == sample_label
+        same_class_distances = distances.copy()
+        same_class_distances[~same_class_mask] = np.inf
+        near_hit_indices = np.argsort(same_class_distances)[:k]
+        
+        # nearMiss: k vizinhos mais próximos de OUTRAS classes
+        diff_class_mask = labels != sample_label
+        diff_class_distances = distances.copy()
+        diff_class_distances[~diff_class_mask] = np.inf
+        near_miss_indices = np.argsort(diff_class_distances)[:k]
+        
+        # Atualizar pesos para cada feature
+        for j in range(n_features):
+            # Diferença para nearHit (queremos minimizar)
+            diff_hit = np.mean(np.abs(sample[j] - features_norm[near_hit_indices, j]))
+            
+            # Diferença para nearMiss (queremos maximizar)
+            diff_miss = np.mean(np.abs(sample[j] - features_norm[near_miss_indices, j]))
+            
+            # ReliefF weight update
+            weights[j] += (diff_miss - diff_hit)
+    
+    # Normalizar weights
+    weights = weights / n_iterations
+    
+    # Ranking
+    ranking = np.argsort(weights)[::-1]
+    
+    print("\nTop 10 Features (ReliefF):")
+    print(f"{'Rank':<6} {'Feature ID':<12} {'Weight':<15}")
+    print("-" * 35)
+    for i in range(min(10, len(ranking)RetryTContinuepython    for i in range(min(10, len(ranking))):
+        idx = ranking[i]
+        print(f"{i+1:<6} {idx:<12} {weights[idx]:<15.6f}")
+    
+    return weights, ranking
+    
+def comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, relieff_ranking):
+    """
+    Compara os resultados do Fisher Score e ReliefF.
+    """
+    print("\n" + "="*80)
+    print("REQUISITO 4.6: COMPARAÇÃO FISHER SCORE vs RELIEFF")
+    print("="*80)
+    
+    print("\nTop 10 Features selecionadas por cada método:")
+    print(f"{'Rank':<6} {'Fisher Score':<15} {'ReliefF':<15} {'Comum?':<10}")
+    print("-" * 50)
+    
+    top_fisher = set(fisher_ranking[:10])
+    top_relieff = set(relieff_ranking[:10])
+    comum = top_fisher & top_relieff
+    
+    for i in range(10):
+        f_id = fisher_ranking[i]
+        r_id = relieff_ranking[i]
+        is_comum = "✓" if (f_id in top_relieff or r_id in top_fisher) else ""
+        print(f"{i+1:<6} {f_id:<15} {r_id:<15} {is_comum:<10}")
+    
+    print(f"\nFeatures em comum no Top 10: {len(comum)}")
+    print(f"Features comuns: {sorted(comum)}")
+    
+    print("\n" + "="*80)
+    print("ANÁLISE COMPARATIVA:")
+    print("="*80)
+    
+    print("\n📊 FISHER SCORE:")
+    print("  • Método: Estatístico (variância entre/dentro classes)")
+    print("  • Tipo: Filtro univariado")
+    print("  • Vantagem: Rápido, simples, bom para dados com separação linear")
+    print("  • Limitação: Não captura interações entre features")
+    print("  • Melhor para: Features com grande separação de médias entre classes")
+    
+    print("\n📊 RELIEFF:")
+    print("  • Método: Baseado em instâncias (vizinhos próximos)")
+    print("  • Tipo: Filtro multivariado")
+    print("  • Vantagem: Captura dependências entre features, robusto a ruído")
+    print("  • Limitação: Mais lento, sensível ao parâmetro k")
+    print("  • Melhor para: Features relevantes em contexto (interações)")
+    
+    print("\n💡 DIFERENÇAS OBSERVADAS:")
+    if len(comum) > 7:
+        print(f"  • Alta concordância ({len(comum)}/10 features comuns)")
+        print("  • Ambos identificam features claramente discriminantes")
+    elif len(comum) > 4:
+        print(f"  • Concordância moderada ({len(comum)}/10 features comuns)")
+        print("  • Alguns critérios diferentes de relevância")
+    else:
+        print(f"  • Baixa concordância ({len(comum)}/10 features comuns)")
+        print("  • Critérios muito diferentes: Fisher prefere separação linear,")
+        print("    ReliefF prefere padrões locais de vizinhança")
+        
+def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0):
+    """
+    Exemplifica a seleção de features para um segmento.
+    """
+    print(f"\n{'='*80}")
+    print(f"REQUISITO 4.6.1: EXEMPLO DE SELEÇÃO DE FEATURES")
+    print(f"{'='*80}")
+    
+    # Selecionar exemplo
+    features_original = feature_matrix[idx_exemplo]
+    
+    print(f"\n1. Features ORIGINAIS (segmento #{idx_exemplo}):")
+    print(f"   Total de features: {len(features_original)}")
+    print(f"   Primeiras 10: {features_original[:10]}")
+    
+    # Top 10 Fisher
+    top_fisher = fisher_ranking[:10]
+    features_fisher = features_original[top_fisher]
+    
+    print(f"\n2. Features selecionadas por FISHER SCORE (Top 10):")
+    print(f"   Índices: {top_fisher}")
+    print(f"   Valores: {features_fisher}")
+    
+    # Top 10 ReliefF
+    top_relieff = relieff_ranking[:10]
+    features_relieff = features_original[top_relieff]
+    
+    print(f"\n3. Features selecionadas por RELIEFF (Top 10):")
+    print(f"   Índices: {top_relieff}")
+    print(f"   Valores: {features_relieff}")
+    
+    print(f"\n4. REDUÇÃO DE DIMENSIONALIDADE:")
+    print(f"   Dimensões originais: {len(features_original)}")
+    print(f"   Dimensões após seleção: 10")
+    print(f"   Redução: {(1 - 10/len(features_original))*100:.1f}%")
+    
+def executar_analise_completa(data):
+    """
+    Executa toda a análise dos requisitos 4.1 a 4.6.
+    """
+    print("\n" + "="*80)
+    print("ANÁLISE COMPLETA - REQUISITOS 4.1 a 4.6")
+    print("="*80)
+    
+    # 4.1 - Testes de significância
+    testes_significativos(data)
+    
+    # 4.2 - Extração de features
+    feature_matrix, labels, dispositivos = extrair_feature_set_completo(data)
+    
+    if feature_matrix is None:
+        print("\nERRO: Não foi possível extrair features. Encerrando análise.")
+        return
+    
+    # 4.3 e 4.4 - PCA
+    pca, features_pca, scaler, pc_75 = aplicar_pca(feature_matrix)
+    
+    # 4.4.1 - Exemplo transformação PCA
+    exemplo_transformacao_pca(pca, scaler, feature_matrix, idx_exemplo=0, n_components_75=pc_75)
+    
+    # 4.4.2 - Discussão PCA
+    discutir_pca()
+    
+    # 4.5 - Fisher Score
+    fisher_scores, fisher_ranking = calcular_fisher_score(feature_matrix, labels)
+    
+    # 4.5 - ReliefF
+    relieff_weights, relieff_ranking = calcular_relieff(feature_matrix, labels, k=10)
+    
+    # 4.6 - Comparação
+    comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, relieff_ranking)
+    
+    # 4.6.1 - Exemplo seleção
+    exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0)
+    
+    # 4.6.2 - Discussão seleção
+    discutir_selecao_features()
+    
+    print("\n" + "="*80)
+    print("ANÁLISE COMPLETA CONCLUÍDA!")
+    print("="*80)
+    
+    return {
+        'feature_matrix': feature_matrix,
+        'labels': labels,
+        'dispositivos': dispositivos,
+        'pca': pca,
+        'features_pca': features_pca,
+        'scaler': scaler,
+        'pc_75': pc_75,
+        'fisher_scores': fisher_scores,
+        'fisher_ranking': fisher_ranking,
+        'relieff_weights': relieff_weights,
+        'relieff_ranking': relieff_ranking
+    }
+    
     
     
         
