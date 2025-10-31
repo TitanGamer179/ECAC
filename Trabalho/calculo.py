@@ -317,9 +317,9 @@ def fisher_score(features, labels):
             fisher_score[i]=0
     
     ranking= np.argsort(fisher_scores)[::-1]
-    for i in range(min(10,len(ranking)):
+    for i in range(min(10,len(ranking))):
         idx= ranking[i]
-        print(f"{i+1:<6} {idx:<12}{fisher_scores[idx]:<15.6f}"))
+        print(f"{i+1:<6} {idx:<12}{fisher_scores[idx]:<15.6f}")
     return fisher_scores, ranking
 
 def relieff(features, labels, k=10):
@@ -372,7 +372,7 @@ def relieff(features, labels, k=10):
     print("\nTop 10 Features (ReliefF):")
     print(f"{'Rank':<6} {'Feature ID':<12} {'Weight':<15}")
     print("-" * 35)
-    for i in range(min(10, len(ranking)RetryTContinuepython    for i in range(min(10, len(ranking))):
+    for i in range(min(10, len(ranking))):
         idx = ranking[i]
         print(f"{i+1:<6} {idx:<12} {weights[idx]:<15.6f}")
     
@@ -407,21 +407,21 @@ def comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, reli
     print("ANÁLISE COMPARATIVA:")
     print("="*80)
     
-    print("\n📊 FISHER SCORE:")
+    print("\nFISHER SCORE:")
     print("  • Método: Estatístico (variância entre/dentro classes)")
     print("  • Tipo: Filtro univariado")
     print("  • Vantagem: Rápido, simples, bom para dados com separação linear")
     print("  • Limitação: Não captura interações entre features")
     print("  • Melhor para: Features com grande separação de médias entre classes")
     
-    print("\n📊 RELIEFF:")
+    print("\nRELIEFF:")
     print("  • Método: Baseado em instâncias (vizinhos próximos)")
     print("  • Tipo: Filtro multivariado")
     print("  • Vantagem: Captura dependências entre features, robusto a ruído")
     print("  • Limitação: Mais lento, sensível ao parâmetro k")
     print("  • Melhor para: Features relevantes em contexto (interações)")
     
-    print("\n💡 DIFERENÇAS OBSERVADAS:")
+    print("\nDIFERENÇAS OBSERVADAS:")
     if len(comum) > 7:
         print(f"  • Alta concordância ({len(comum)}/10 features comuns)")
         print("  • Ambos identificam features claramente discriminantes")
@@ -481,36 +481,29 @@ def executar_analise_completa(data):
     testes_significativos(data)
     
     # 4.2 - Extração de features
-    feature_matrix, labels, dispositivos = extrair_feature_set_completo(data)
+    feature_matrix, labels, dispositivos = extrair_features(data)
     
     if feature_matrix is None:
         print("\nERRO: Não foi possível extrair features. Encerrando análise.")
         return
     
     # 4.3 e 4.4 - PCA
-    pca, features_pca, scaler, pc_75 = aplicar_pca(feature_matrix)
+    pca, features_pca, scaler, pc_75 =apply_pca(feature_matrix)
     
     # 4.4.1 - Exemplo transformação PCA
-    exemplo_transformacao_pca(pca, scaler, feature_matrix, idx_exemplo=0, n_components_75=pc_75)
-    
-    # 4.4.2 - Discussão PCA
-    discutir_pca()
+    example_pca(pca, scaler, feature_matrix, idx_exemplo=0, n_components_75=pc_75)
     
     # 4.5 - Fisher Score
-    fisher_scores, fisher_ranking = calcular_fisher_score(feature_matrix, labels)
+    fisher_scores, fisher_ranking = fisher_score(feature_matrix, labels)
     
     # 4.5 - ReliefF
-    relieff_weights, relieff_ranking = calcular_relieff(feature_matrix, labels, k=10)
+    relieff_weights, relieff_ranking = relieff(feature_matrix, labels, k=10)
     
     # 4.6 - Comparação
     comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, relieff_ranking)
     
     # 4.6.1 - Exemplo seleção
     exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0)
-    
-    # 4.6.2 - Discussão seleção
-    discutir_selecao_features()
-    
     print("\n" + "="*80)
     print("ANÁLISE COMPLETA CONCLUÍDA!")
     print("="*80)
@@ -528,10 +521,10 @@ def executar_analise_completa(data):
         'relieff_weights': relieff_weights,
         'relieff_ranking': relieff_ranking
     }
-    
-    
-    
-        
-    
-            
-           
+
+
+
+
+
+
+

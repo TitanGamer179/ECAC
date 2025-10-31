@@ -77,3 +77,226 @@ def visualizar_clusters_kmeans_3d(data_3d, labels, n_clusters, title):
     legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
     ax.add_artist(legend1)
     plt.show()
+    
+def plot_variancia_explicada_pca(pca, pc_75=None):
+    """
+    Plota a variância explicada por cada componente principal.
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Gráfico 1: Variância explicada por componente
+    n_components = len(pca.explained_variance_ratio_)
+    ax1.bar(range(1, n_components+1), pca.explained_variance_ratio_ * 100)
+    ax1.set_xlabel('Componente Principal')
+    ax1.set_ylabel('Variância Explicada (%)')
+    ax1.set_title('Variância Explicada por Componente Principal')
+    ax1.grid(True, alpha=0.3)
+    
+    if pc_75:
+        ax1.axvline(x=pc_75, color='r', linestyle='--', label=f'75% variância (PC{pc_75})')
+        ax1.legend()
+    
+    # Gráfico 2: Variância acumulada
+    var_acumulada = np.cumsum(pca.explained_variance_ratio_) * 100
+    ax2.plot(range(1, n_components+1), var_acumulada, 'b-o', linewidth=2, markersize=4)
+    ax2.axhline(y=75, color='r', linestyle='--', label='75%')
+    ax2.set_xlabel('Número de Componentes')
+    ax2.set_ylabel('Variância Acumulada (%)')
+    ax2.set_title('Variância Acumulada')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    if pc_75:
+        ax2.axvline(x=pc_75, color='r', linestyle='--', alpha=0.5)
+        ax2.plot(pc_75, 75, 'ro', markersize=10)
+    
+    plt.tight_layout()
+    plt.show()
+
+def plot_pca_2d(features_pca, labels, title="Visualização PCA 2D"):
+    """
+    Visualiza os dados em 2D usando os dois primeiros componentes principais.
+    """
+    plt.figure(figsize=(12, 8))
+    
+    # Mapear labels para cores
+    unique_labels = np.unique(labels)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_labels)))
+    
+    for idx, label in enumerate(unique_labels):
+        mask = labels == label
+        plt.scatter(features_pca[mask, 0], features_pca[mask, 1],
+                   c=[colors[idx]], label=f'Atividade {int(label)}',
+                   alpha=0.6, s=30)
+    
+    plt.xlabel('PC1 (Primeira Componente Principal)')
+    plt.ylabel('PC2 (Segunda Componente Principal)')
+    plt.title(title)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+def plot_pca_3d(features_pca, labels, title="Visualização PCA 3D"):
+    """
+    Visualiza os dados em 3D usando os três primeiros componentes principais.
+    """
+    fig = plt.figure(figsize=(14, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Mapear labels para cores
+    unique_labels = np.unique(labels)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_labels)))
+    
+    for idx, label in enumerate(unique_labels):
+        mask = labels == label
+        ax.scatter(features_pca[mask, 0], features_pca[mask, 1], features_pca[mask, 2],
+                  c=[colors[idx]], label=f'Atividade {int(label)}',
+                  alpha=0.6, s=30)
+    
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    ax.set_zlabel('PC3')
+    ax.set_title(title)
+    ax.legend(bbox_to_anchor=(1.15, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
+
+def plot_fisher_scores(fisher_scores, top_n=20):
+    """
+    Plota os Fisher Scores das top N features.
+    """
+    # Ordenar scores
+    sorted_indices = np.argsort(fisher_scores)[::-1][:top_n]
+    sorted_scores = fisher_scores[sorted_indices]
+    
+    plt.figure(figsize=(14, 8))
+    bars = plt.bar(range(top_n), sorted_scores, color='steelblue', alpha=0.8)
+    
+    # Destacar top 10
+    for i in range(min(10, top_n)):
+        bars[i].set_color('darkred')
+        bars[i].set_alpha(0.9)
+    
+    plt.xlabel('Ranking da Feature')
+    plt.ylabel('Fisher Score')
+    plt.title(f'Top {top_n} Features por Fisher Score')
+    plt.xticks(range(top_n), [f'F{sorted_indices[i]}' for i in range(top_n)], rotation=45)
+    plt.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    plt.show()
+    
+    print("\nTop 10 Features (Fisher Score):")
+    for i in range(min(10, top_n)):
+        print(f"{i+1}. Feature {sorted_indices[i]}: {sorted_scores[i]:.4f}")
+
+def plot_relieff_weights(relieff_weights, top_n=20):
+    """
+    Plota os pesos do ReliefF das top N features.
+    """
+    # Ordenar weights
+    sorted_indices = np.argsort(relieff_weights)[::-1][:top_n]
+    sorted_weights = relieff_weights[sorted_indices]
+    
+    plt.figure(figsize=(14, 8))
+    bars = plt.bar(range(top_n), sorted_weights, color='forestgreen', alpha=0.8)
+    
+    # Destacar top 10
+    for i in range(min(10, top_n)):
+        bars[i].set_color('darkgreen')
+        bars[i].set_alpha(0.9)
+    
+    plt.xlabel('Ranking da Feature')
+    plt.ylabel('ReliefF Weight')
+    plt.title(f'Top {top_n} Features por ReliefF')
+    plt.xticks(range(top_n), [f'F{sorted_indices[i]}' for i in range(top_n)], rotation=45)
+    plt.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    plt.show()
+    
+    print("\nTop 10 Features (ReliefF):")
+    for i in range(min(10, top_n)):
+        print(f"{i+1}. Feature {sorted_indices[i]}: {sorted_weights[i]:.4f}")
+
+def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
+    """
+    Compara visualmente os rankings do Fisher Score e ReliefF.
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Top N de cada método
+    top_fisher = fisher_ranking[:top_n]
+    top_relieff = relieff_ranking[:top_n]
+    
+    # Gráfico 1: Features selecionadas por Fisher
+    ax1.barh(range(top_n), range(top_n, 0, -1), color='steelblue', alpha=0.7)
+    ax1.set_yticks(range(top_n))
+    ax1.set_yticklabels([f'F{top_fisher[i]}' for i in range(top_n)])
+    ax1.set_xlabel('Ranking')
+    ax1.set_title('Top 10 Features - Fisher Score')
+    ax1.invert_xaxis()
+    ax1.grid(True, alpha=0.3, axis='x')
+    
+    # Gráfico 2: Features selecionadas por ReliefF
+    ax2.barh(range(top_n), range(1, top_n+1), color='forestgreen', alpha=0.7)
+    ax2.set_yticks(range(top_n))
+    ax2.set_yticklabels([f'F{top_relieff[i]}' for i in range(top_n)])
+    ax2.set_xlabel('Ranking')
+    ax2.set_title('Top 10 Features - ReliefF')
+    ax2.grid(True, alpha=0.3, axis='x')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # Diagrama de Venn (features comuns)
+    set_fisher = set(top_fisher)
+    set_relieff = set(top_relieff)
+    comum = set_fisher & set_relieff
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Círculo Fisher
+    circle1 = plt.Circle((0.3, 0.5), 0.3, color='steelblue', alpha=0.3, label='Fisher')
+    # Círculo ReliefF
+    circle2 = plt.Circle((0.7, 0.5), 0.3, color='forestgreen', alpha=0.3, label='ReliefF')
+    
+    ax.add_patch(circle1)
+    ax.add_patch(circle2)
+    
+    # Textos
+    ax.text(0.2, 0.5, f'{len(set_fisher - set_relieff)}', fontsize=20, ha='center')
+    ax.text(0.5, 0.5, f'{len(comum)}', fontsize=20, ha='center', fontweight='bold')
+    ax.text(0.8, 0.5, f'{len(set_relieff - set_fisher)}', fontsize=20, ha='center')
+    
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect('equal')
+    ax.axis('off')
+    ax.legend(loc='upper center')
+    ax.set_title(f'Features Comuns no Top {top_n}', fontsize=14, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    print(f"\n{len(comum)} features comuns: {sorted(comum)}")
+
+def plot_matriz_correlacao_features(feature_matrix, feature_indices, labels_list):
+    """
+    Plota matriz de correlação entre features selecionadas.
+    """
+    features_selecionadas = feature_matrix[:, feature_indices]
+    
+    # Calcular correlação
+    corr_matrix = np.corrcoef(features_selecionadas.T)
+    
+    plt.figure(figsize=(12, 10))
+    im = plt.imshow(corr_matrix, cmap='coolwarm', vmin=-1, vmax=1, aspect='auto')
+    plt.colorbar(im, label='Correlação')
+    
+    # Labels
+    plt.xticks(range(len(feature_indices)), [f'F{i}' for i in feature_indices], rotation=45)
+    plt.yticks(range(len(feature_indices)), [f'F{i}' for i in feature_indices])
+    
+    plt.title('Matriz de Correlação - Features Selecionadas')
+    plt.tight_layout()
+    plt.show()
