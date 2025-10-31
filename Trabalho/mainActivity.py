@@ -115,9 +115,6 @@ def main():
     print("\n--- Requisito 4.6.1: Exemplo de Seleção de Features ---")
     calculo.exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0)
     
-    # 4.6.2 - Vantagens e Limitações Seleção
-    print("\n--- Requisito 4.6.2: Vantagens e Limitações da Seleção ---")
-    calculo.print_selection_analysis(feature_matrix.shape[1], pc_75)
 
     # Gráficos PCA
     print("\nA gerar visualizações PCA...")
