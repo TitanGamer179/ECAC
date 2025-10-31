@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def main():
     # 1 - Abrir os ficheiros
-    all_data = openfile.open_all_files('C:\Users\\titin\Downloads\\vscode\ecac\ECAC\Trabalho')
+    all_data = openfile.open_all_files('C:\\Users\\titin\Downloads\\vscode\\ecac\\ECAC\\Trabalho')
     if all_data.size == 0:
         print("Nenhum dado foi carregado. Verifique o caminho da diretoria.")
         return
