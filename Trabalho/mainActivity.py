@@ -66,7 +66,7 @@ def main():
     graficos.visualizar_outliers_3d(acc_data_3d, outliers_kmeans_mask, plot_title_outliers_kmeans)
     print(f"Número de outliers detetados com k-Means: {np.sum(outliers_kmeans_mask)}")
     print("\n--- Requisito 3.7.1: Deteção de Outliers com DBSCAN ---")
-    outliers_dbscan_mask = calculo.aplicar_dbscan(acc_data_3d, eps=0.5, min_samples=20)
+    outliers_dbscan_mask = calculo.aplicar_dbscan(acc_data_3d, eps=0.5, min_samples=75)
     plot_title_outliers_dbscan = f'Outliers DBSCAN para Disp {device_id}, Ativ {activity_id}'
     graficos.visualizar_outliers_3d(acc_data_3d, outliers_dbscan_mask, plot_title_outliers_dbscan)
     print(f"Número de outliers detetados com DBSCAN: {np.sum(outliers_dbscan_mask)}")
