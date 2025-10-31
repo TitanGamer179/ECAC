@@ -2,8 +2,10 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from scipy.stats import kstest, f_oneway, kruskal
-from scipy.fft import fft, fftfreq
+from scipy.fft import fft
 from scipy.stats import skew, kurtosis
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 # Função para calcular o tratamento de outliers
 def add_magnitude(data):
@@ -249,6 +251,42 @@ def extrair_features(data):
         features_matrix.append(features_complete)
         
     return np.array(features_matrix), np.array(labels), np.array(dispositivos)
+
+def apply_pca(features_matrix, n_components=None):
+    scaler= StandardScaler()
+    features_normalizadas= scaler.fit_transform(features_matrix)
+    
+    pca = PCA(n_components=n_components)
+    features_pca= pca.fit_transform(features_normalizadas)
+    
+    var_acumulada= 0
+    pc_75=None
+    
+    for i,var in enumerate(pca.explained_variance_ratio_):
+        var_acumulada +=var
+        print(f"PC{i+1:<4} {var*100:<15.2f}{var_acumulada*100:<15.2f}\n")
+        
+        if var_acumulada >= 0.75 and pc_75 is None:
+            pc_75= i+1
+            
+    print("Para explicarmos 75% do feature set, devemos utilizar {pc_75} componentes principais.\n")
+        
+    for i,eigenval in enumerate(pca.explained_variance_[:10]):
+        print(f"PC{i+1<5}{eigenval:<15.6f\n}")
+            
+    return pca, features_pca, scaler, pc_75
+
+def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None):
+    features_original= features_matrix[idx_exemplo]
+    features_normalizadas= scaler.transform(features_original.reshape(1,-1))
+    
+    features_pca_full = pca.transform(features_normalizadas)
+    
+    if n_components_75:
+        features_pca_75= features_pca_full[0, :n_components_75]
+        print(f"Features PCA (75% variação) para o exemplo {idx_exemplo}:\n{features_pca_75}\n")
+    
+    
         
     
             
