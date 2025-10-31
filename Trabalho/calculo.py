@@ -300,28 +300,27 @@ def extrair_features(data):
     return np.array(features_matrix), np.array(labels), np.array(dispositivos) #convertemos a features_matrix num array
     #cada linha é um segmento e cada coluna uma feature
 
+#As próximas funções servem para a implementação do PCA e para exemplificar como é que vão ser extraídas as features relativas à compressão.
+#Sinoninamente, correspondem aos exercícios 4.3 e 4.4
 def apply_pca(features_matrix, n_components=None):
     scaler= StandardScaler()
-    features_normalizadas= scaler.fit_transform(features_matrix)
+    features_normalizadas= scaler.fit_transform(features_matrix) #feature_set pronto para ser utilizado no PCA
+    #as duas linhas de código acima servem para preparar os dados antes de se aplicar o PCA, vamos normalizar
     
-    pca = PCA(n_components=n_components)
-    features_pca= pca.fit_transform(features_normalizadas)
-    
-    print("\n" + "="*80)
-    print("REQUISITO 4.4: ANÁLISE DE COMPONENTES PRINCIPAIS (PCA)")
-    print("="*80)
+    pca = PCA(n_components=n_components) #criamos uma instância de PCA
+    features_pca= pca.fit_transform(features_normalizadas)#aplicamos o PCA aos dados normalizados
     
     var_acumulada= 0
-    pc_75=None
-    
-    print(f"{'Componente':<12} {'Variância (%)':<15} {'Variância Acumulada (%)':<15}")
-    for i,var in enumerate(pca.explained_variance_ratio_):
-        var_acumulada +=var
-        if i < 15 or (i+1) % 10 == 0: # Imprimir os 15 primeiros e depois de 10 em 10
-            print(f"PC{i+1:<10} {var*100:<15.2f}{var_acumulada*100:<15.2f}")
+    pc_75=None #variável que vai guardar o número de componentes necessárias para atingir 75% de variância explicada
+
+    for i,var in enumerate(pca.explained_variance_ratio_): #vai percorrer um array  que contém a paercentagem de variância de cada componente
+        var_acumulada +=var #vai adicionando a variância de cada componente ao total acumulado
         
-        if var_acumulada >= 0.75 and pc_75 is None:
-            pc_75= i+1
+        if i < 15 or (i + 1) % 10 == 0: 
+            print(f"PC{i+1:<10} {var*100:<15.2f}{var_acumulada*100:<15.2f}") #print para mostrar a importância de cada componente
+            
+        if var_acumulada >= 0.75 and pc_75 is None: #verificamos se não atingiu ainda os 75%
+            pc_75= i+1 #guarda a quantidade de componentes necessárias para atingir os 75%
             print("-" * 55)
             print(f"PC{i+1:<10} {var*100:<15.2f}{var_acumulada*100:<15.2f} <-- Limiar de 75% atingido")
             print("-" * 55)
@@ -329,21 +328,16 @@ def apply_pca(features_matrix, n_components=None):
     
     print(f"\nPara explicarmos 75% do feature set, devemos utilizar {pc_75} componentes principais.\n")
         
-    print("Top 10 Eigenvalues (Importância da Componente):")
-    for i,eigenval in enumerate(pca.explained_variance_[:10]):
-        print(f"PC{i+1:<5} {eigenval:<15.6f}")
             
     return pca, features_pca, scaler, pc_75
 
-def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None):
-    print("\n" + "="*80)
-    print("REQUISITO 4.4.1: EXEMPLO DE TRANSFORMAÇÃO PCA")
-    print("="*80)
+#Esta função serve para exemplificar como é que o PCA atua sobre um intervalo específico  
+def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None): #vamos testar o primeiro segmento
     
-    features_original= features_matrix[idx_exemplo]
-    features_normalizadas= scaler.transform(features_original.reshape(1,-1))
+    features_original= features_matrix[idx_exemplo]#selecionamos esse segmento da matriz original
+    features_normalizadas= scaler.transform(features_original.reshape(1,-1)) #aplicamos o normalizador de zscore
     
-    features_pca_full = pca.transform(features_normalizadas)
+    features_pca_full = pca.transform(features_normalizadas) #de seguida, aplicamos o PCA
     
     print(f"Features originais (segmento #{idx_exemplo}, 10 primeiras):")
     print(f"  {features_original[:10]}")
@@ -355,7 +349,7 @@ def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None)
     print(f"  {features_pca_full[0, :10]}")
     
     if n_components_75:
-        features_pca_75= features_pca_full[0, :n_components_75]
+        features_pca_75= features_pca_full[0, :n_components_75] #cortamos o vetor features_pca_full para obter apenas as primeiras n_components_75  
         print(f"\nFeatures PCA (reduzidas para 75% variação) para o exemplo {idx_exemplo}:")
         print(f"  Dimensões: {len(features_pca_75)}")
         print(f"  Valores (primeiras 10): {features_pca_75[:10]}\n")
