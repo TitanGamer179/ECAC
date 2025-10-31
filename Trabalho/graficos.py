@@ -262,7 +262,7 @@ def plot_pca_3d(features_pca, labels, title="Visualização PCA 3D"):
     plt.show()
 
 #Gráficos que plotam os scores das N melhores features
-def plot_fisher_scores(fisher_scores, top_n=20):
+def plot_fisher_scores(fisher_scores, top_n=10):
     # Ordenar scores
     sorted_indices = np.argsort(fisher_scores)[::-1][:top_n]
     sorted_scores = fisher_scores[sorted_indices]
@@ -287,7 +287,7 @@ def plot_fisher_scores(fisher_scores, top_n=20):
     for i in range(min(10, top_n)):
         print(f"{i+1}. Feature {sorted_indices[i]}: {sorted_scores[i]:.4f}")
 
-def plot_relieff_weights(relieff_weights, top_n=20):
+def plot_relieff_weights(relieff_weights, top_n=10):
 
     # Ordenar weights
     sorted_indices = np.argsort(relieff_weights)[::-1][:top_n]
