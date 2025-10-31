@@ -303,13 +303,13 @@ def fisher_score(features, labels):
             indices_classe= labels ==classe
             n_classe= np.sum(indices_classe)
             mean_classe= np.mean(features_col[indices_classe])
-            sb += n_classe* (mean_classe - mean_global[i]**2)
+            sb += n_classe* (mean_classe - mean_global[i])**2
             
         sw=0
         for classe in np.unique(labels):
             indices_classe= labels ==classe
-            feature_classe=labels ==classe
-            sw +=np.sum((feature_classe - np.mean(feature_classe))**2)
+            feature_classe= features_col[indices_classe]
+            sw +=np.sum((feature_classe - mean_classe)**2)
 
         if sw>0:
             fisher_score[i]= sb/sw
@@ -491,7 +491,7 @@ def executar_analise_completa(data):
     pca, features_pca, scaler, pc_75 =apply_pca(feature_matrix)
     
     # 4.4.1 - Exemplo transformação PCA
-    example_pca(pca, scaler, feature_matrix, idx_exemplo=0, n_components_75=pc_75)
+    example_pca(pca, feature_matrix, scaler, idx_exemplo=0, n_components_75=pc_75)
     
     # 4.5 - Fisher Score
     fisher_scores, fisher_ranking = fisher_score(feature_matrix, labels)
