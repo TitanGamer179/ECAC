@@ -102,10 +102,6 @@ def main():
     print("\n--- Requisito 4.4.1: Exemplo de Transformação PCA ---")
     calculo.example_pca(pca, feature_matrix, scaler, idx_exemplo=0, n_components_75=pc_75)
     
-    # 4.4.2 - Vantagens e Limitações PCA
-    print("\n--- Requisito 4.4.2: Vantagens e Limitações PCA ---")
-    calculo.print_pca_analysis(feature_matrix.shape[1], pc_75)
-    
     # 4.5 - Fisher Score & ReliefF
     print("\n--- Requisito 4.5: Seleção de Features (Fisher Score & ReliefF) ---")
     fisher_scores, fisher_ranking = calculo.fisher_score(feature_matrix, labels)

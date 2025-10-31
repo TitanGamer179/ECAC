@@ -520,3 +520,4 @@ def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, id
     print(f"   Dimensões originais: {len(features_original)}")
     print(f"   Dimensões após seleção: 10")
     print(f"   Redução: {(1 - 10/len(features_original))*100:.1f}%")
+
