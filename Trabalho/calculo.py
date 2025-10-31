@@ -344,7 +344,8 @@ def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None)
         print(f"  Valores (primeiras 10): {features_pca_75[:10]}\n")
         
 # --- NOVA FUNÇÃO ADICIONADA ---
-def print_pca_analysis():
+# --- MODIFICADA: Removida a variável global, agora recebe parâmetros ---
+def print_pca_analysis(n_features_original, n_componentes_pca):
     """
     Imprime a análise de vantagens e limitações do PCA (Requisito 4.4.2)
     """
@@ -354,7 +355,7 @@ def print_pca_analysis():
     
     print("\n💡 VANTAGENS:")
     print("  • Redução de Dimensionalidade: Comprime um grande número de features (como as "
-          f"{'108'} que extraímos) num conjunto muito menor (ex: {_pc_75_placeholder} componentes), "
+          f"{n_features_original} que extraímos) num conjunto muito menor (ex: {n_componentes_pca} componentes), "
           "mantendo a maior parte da variância (informação).")
     print("  • Remoção de Redundância: O PCA cria componentes não correlacionados, "
           "eliminando a multicolinearidade entre as features originais (ex: correlações entre "
@@ -375,7 +376,6 @@ def print_pca_analysis():
           "são lineares. Pode falhar em capturar padrões complexos e não-lineares.")
     print("  • Variância vs. Importância: O PCA assume que as direções de maior variância "
           "são as mais importantes para a classificação, o que nem sempre é verdade.")
-# --- FIM DA NOVA FUNÇÃO ---
 
 def fisher_score(features, labels):
     print("\n" + "="*80)
@@ -600,11 +600,11 @@ def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, id
     print(f"   Redução: {(1 - 10/len(features_original))*100:.1f}%")
 
 # --- NOVA FUNÇÃO ADICIONADA ---
-def print_selection_analysis():
+# --- MODIFICADA: Removida a variável global, agora recebe parâmetros ---
+def print_selection_analysis(n_features_original, n_componentes_pca):
     """
     Imprime a análise de vantagens e limitações da Seleção de Features (Req 4.6.2)
     """
-    global _pc_75_placeholder # Usar a variável global para a string
     print(f"\n{'='*80}")
     print(f"REQUISITO 4.6.2: VANTAGENS E LIMITAÇÕES DA SELEÇÃO DE FEATURES")
     print(f"{'='*80}")
@@ -614,8 +614,8 @@ def print_selection_analysis():
           "usa as features originais (ex: 'média do giroscópio-x', 'std da aceleração-z'). "
           "Podemos interpretar *quais* características físicas são importantes.")
     print("  • Eficiência: Criar um modelo com 10 features é muito mais rápido do que "
-          "com 108 (ou mesmo com as "
-          f"{_pc_75_placeholder} do PCA).")
+          f"com {n_features_original} (ou mesmo com as "
+          f"{n_componentes_pca} do PCA).")
     print("  • Robustez a Overfitting: Ao remover features irrelevantes ou redundantes, "
           "o modelo pode generalizar melhor para novos dados.")
 
@@ -631,76 +631,3 @@ def print_selection_analysis():
     print("  • Dependência do Método: Como vimos, Fisher (univariado) e ReliefF "
           "(multivariado) podem dar resultados diferentes. A escolha do método de "
           "seleção influencia muito o resultado.")
-# --- FIM DA NOVA FUNÇÃO ---
-
-# Variável global para passar o n_componentes para os prints
-_pc_75_placeholder = 'N/A'
-
-def executar_analise_completa(data):
-    """
-    Executa toda a análise dos requisitos 4.1 a 4.6.
-    """
-    global _pc_75_placeholder # Declarar que vamos modificar a variável global
-    
-    print("\n" + "="*80)
-    print("ANÁLISE COMPLETA - REQUISITOS 4.1 a 4.6")
-    print("="*80)
-    
-    # 4.1 - Testes de significância
-    testes_significativos(data)
-    
-    # 4.2 - Extração de features
-    feature_matrix, labels, dispositivos = extrair_features(data)
-    
-    if feature_matrix is None or feature_matrix.size == 0:
-        print("\nERRO: Não foi possível extrair features. Encerrando análise.")
-        return None
-    
-    if feature_matrix.shape[0] != labels.shape[0]:
-        print("\nERRO: Inconsistência entre número de features e labels.")
-        return None
-        
-    print(f"Matriz de features criada com sucesso: {feature_matrix.shape}")
-    
-    # 4.3 e 4.4 - PCA
-    pca, features_pca, scaler, pc_75 = apply_pca(feature_matrix)
-    _pc_75_placeholder = str(pc_75) # Atualizar a variável global
-    
-    # 4.4.1 - Exemplo transformação PCA
-    example_pca(pca, feature_matrix, scaler, idx_exemplo=0, n_components_75=pc_75)
-    
-    # --- CHAMADA À NOVA FUNÇÃO ---
-    print_pca_analysis()
-    
-    # 4.5 - Fisher Score
-    fisher_scores, fisher_ranking = fisher_score(feature_matrix, labels)
-    
-    # 4.5 - ReliefF
-    relieff_weights, relieff_ranking = relieff(feature_matrix, labels, k=10)
-    
-    # 4.6 - Comparação
-    comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, relieff_ranking)
-    
-    # 4.6.1 - Exemplo seleção
-    exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0)
-    
-    # --- CHAMADA À NOVA FUNÇÃO ---
-    print_selection_analysis()
-    
-    print("\n" + "="*80)
-    print("ANÁLISE DA SECÇÃO 4 CONCLUÍDA!")
-    print("="*80)
-    
-    return {
-        'feature_matrix': feature_matrix,
-        'labels': labels,
-        'dispositivos': dispositivos,
-        'pca': pca,
-        'features_pca': features_pca,
-        'scaler': scaler,
-        'pc_75': pc_75,
-        'fisher_scores': fisher_scores,
-        'fisher_ranking': fisher_ranking,
-        'relieff_weights': relieff_weights,
-        'relieff_ranking': relieff_ranking
-    }
