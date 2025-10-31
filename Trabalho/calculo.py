@@ -89,6 +89,7 @@ def aplicar_dbscan(data_3d, eps=0.5, min_samples=15):
 #De seguida, dependendo do resultado, vamos aplicar um teste estatístico específico.
 
 def testes_significativos(data):
+    #Os objetivos destes testes é comparar as médias das diferentes atividades
     print("A realizar testes de significância estatística...")
     #Primeiro, começamos for verificar a normalidade dos dados com o teste Kolmogorov-Smirnov
     dispositivos=sorted(np.unique(data[:,0])) #vamos buscar os valores únicos à coluna0, que contém os dispositivos
@@ -143,15 +144,15 @@ def testes_significativos(data):
                 print("Todas as atividades seguem uma distribuição normal. A realizar ANOVA...\n")
                 f_stat, p_value = f_oneway(*dadospor_atividade) #realizamos o teste ANOVA
                 #a sintaxe *dadospor_atividade serve para desempacotar a lista de arrays
-                #O objetivo deste teste é comparar as médias das diferentes atividades
                 if p_value <0.05:
                     print(f"Diferença significativa encontrada (p={p_value:.4e}) usando ANOVA.")
                 else:
                     print(f"Nenhuma diferença significativa encontrada (p={p_value:.4f}) usando ANOVA.")
-                    
+                   
+            #Caso não tenham distribuição normal, utiliza-se o teste de Kruskal-Wallis 
             else:  
                 print("Nem todas as atividades têm distribuição normal. A realizar o teste de Kruskal-Wallis...\n")
-                h_stat, p_value= kruskal(*dadospor_atividade)
+                h_stat, p_value= kruskal(*dadospor_atividade) #realizamos o teste de Kruskal-Wallis
                 if p_value <0.05:
                     print(f"Diferença significativa encontrada (p={p_value:.4e}) usando Kruskal-Wallis.")
                 else:
@@ -159,63 +160,78 @@ def testes_significativos(data):
                     
             print("Estatísticas descritivas por atividade:\n")
             print(f"{'Atividade':<10} {'Média':<15} {'Desvio Padrão':<15} {'Mediana':<15}")
-            for i, ativ in enumerate(atividades_normais):
-                dados = dadospor_atividade[i]
+            for i, ativ in enumerate(atividades_normais): #utilizamos o enumerate para obter o indice e id da atividade
+                dados = dadospor_atividade[i] #vamos buscar o conjunto de dados que lhe compete.
                 if len(dados) > 0:
                     print(f"{ativ:<10} {np.mean(dados):<15.4f} {np.std(dados):<15.4f} {np.median(dados):<15.4f}")
                 else:
                     print(f"{ativ:<10} {'N/A':<15} {'N/A':<15} {'N/A':<15}")
                 
-        
+#Desenvolvimento de rotinas à extração de features no exercício 4.2
+#Este código tem como objetivo utilizar uma segmentação específica para a extração
+#de algumas features identificadas no artigo dado pelo professor.
+     
 def features_temporais(segmento):
+    #Esta função extraí as features temporais identificadas, sendo estas:
+    #Mean, median, Standart Deviation, Variance, Root Mean Square Averaged derivatives,
+    #Skewness, Kurtosis, Interquartile Range, Zero Crossing Rate, Mean Crossing Rate
+    #Pairwise correlation
     mean_val=0
     features= []
-    for col in range(1,10):
-        dados= segmento[:,col]
+    for col in range(1,10): #vamos percorrer os eixos dos sensores
+        dados= segmento[:,col] #extraímos todos os dados da coluna
         N= len(dados)
         
-        features.append(np.mean(dados))
-        features.append(np.median(dados))
-        features.append(np.std(dados))
-        features.append(np.var(dados))
-        features.append(np.sqrt(np.mean(dados**2)))
+        if N == 0:
+            features.append(0)
+            continue
+        
+        features.append(np.mean(dados)) #valor médio do sinal
+        features.append(np.median(dados)) #Mediana do sinal
+        features.append(np.std(dados))#Desvio padrão do sinal
+        features.append(np.var(dados)) #Variância do sinal
+        features.append(np.sqrt(np.mean(dados**2))) #Raíz quadrada da média dos quadrados
 
         if N >1:
-            features.append(np.mean(np.diff(dados)))
+            features.append(np.mean(np.diff(dados))) #Calcula a diferença entre amostras consecuticas
         else:
             features.append(0)
 
-        features.append(skew(dados))
-        features.append(kurtosis(dados))
+        features.append(skew(dados)) #Mede a assimetria da distribuição dos dados. 0 se perfeitamente simétrico
+        features.append(kurtosis(dados)) # Mede a frequència de valores extremos em comparação com uma distribuição normal
         
-        q75,q25= np.percentile(dados, [75 ,25])
-        features.append(q75-q25)
+        q75,q25= np.percentile(dados, [75 ,25]) #Calcula o 75 e 25 percentil
+        features.append(q75-q25) #Medida robusta da dispersão de dados
         
         if N>1:
-            zcr= np.sum(np.diff(np.sign(dados))!=0)/(N-1)
+            zcr= np.sum(np.diff(np.sign(dados))!=0)/(N-1) #Contar o número de vezes que o sinal cruza o eixo zero e normaliza a contagem pelo comprimento do sinal
+            #Normalizamos por N-1 PARA OBTER SEMPRE UM VALOR ENTRE 0 E 1
             features.append(zcr)
             
-            mean_val= np.mean(dados)
-            mcr= np.sum(np.diff(np.sign(dados - mean_val))!=0)/(N-1)
+            mean_val= np.mean(dados) #Média do sinal
+            mcr= np.sum(np.diff(np.sign(dados - mean_val))!=0)/(N-1) #semelhante ao ZCR mas começa por subtrair a média, e conta quantas vezes o sinal se cruza com o próprio valor médio
             features.append(mcr)
-        else:
+        else: #se tivermos apenas um valor, não conseguimos calcular estas features
             features.append(0)
             features.append(0)
             
-    dados_todos_eixos=segmento[:,1:10]
+    dados_todos_eixos=segmento[:,1:10] #selecionamos todos os 9 eixos de dados
     try:
-        coor_matrix_total = np.corrcoef(dados_todos_eixos, rowvar=False)
-        coor_matrix =np.nan_to_num(coor_matrix_total)
-        indices_superior= np.triu_indices(9, k=1)
-        features.extend(coor_matrix[indices_superior])
+        coor_matrix_total = np.corrcoef(dados_todos_eixos, rowvar=False) #coeficiente da correlação de Pearson
+        coor_matrix =np.nan_to_num(coor_matrix_total) #se a matrix tiver valores conctantes / NaN,
+            #substituímos por zeros para evitar erros
+        indices_superior= np.triu_indices(9, k=1) #evita pegarmos nos mesmos valores mais do que uma vez
+        features.extend(coor_matrix[indices_superior]) #anexamos os valores de coorelação válidos
     except:
         features.extend([0]*36)
         
-    return np.array(features)
+    return np.array(features) #convertemos a lista final e devolve
 
-def features_espectrais(segmento, fs=50):
+def features_espectrais(segmento, fs=51.2):
+    #Função muito semelhante à anterior, mas desta vez vamos extrair features
+    #espectrais, sendo estas a Entropia Espectral
     features = []
-    for col in range (1,10):
+    for col in range (1,10): #voltamos a ver os 9 eixos dos sensores
         dados = segmento[:,col]
         N= len(dados)
         
@@ -223,48 +239,50 @@ def features_espectrais(segmento, fs=50):
             features.append(0)
             continue
             
-        fft_vals = fft(dados)
-        fft_mag =np.abs(fft_vals[:N//2])
+        fft_vals = fft(dados) #FFT, converte o sinal do domínio temporal para o domínio da frequência.
+        fft_mag =np.abs(fft_vals[:N//2]) #calcula-se a magnitude de cada número, utilizando apenas a primeira metade dos valores
     
         if np.sum(fft_mag) > 0:
-            fft_mag_norm= fft_mag /np.sum(fft_mag)
+            fft_mag_norm= fft_mag /np.sum(fft_mag) #Normalizamos o espectro de magnitude dividindo cada valor pela soma total, fazendo assim com que a soma de todos os valores seja 1.
         else:
-            fft_mag_norm= fft_mag
+            fft_mag_norm= fft_mag #se a energia for nula, utilizamos apenas um array de zeros
             
-        fft_mag_pos = fft_mag_norm[fft_mag_norm >0]
+        fft_mag_pos = fft_mag_norm[fft_mag_norm >0] #filtramos pelos valores da magnitude positivos
         if len(fft_mag_pos) >0:
-            entropia= -np.sum(fft_mag_pos * np.log2(fft_mag_pos))
+            entropia= -np.sum(fft_mag_pos * np.log2(fft_mag_pos)) #medimos a incerteza do espectro.
             features.append(entropia)
         else:
             features.append(0)
-    return np.array(features)
+    return np.array(features) #devolvemos a lista convertida em array
 
-def segmentation(data, janela_size=5, overlap= 0.5, fs=50):
+def segmentation(data, janela_size=5, overlap= 0.5, fs=51.2):
+    #Esta função serve como auxílio à segmentação das feautures
     print("A segmentar os dados...\n")
     
-    tam_janela= int(janela_size*fs)
-    passo= int(tam_janela * (1-overlap))
+    tam_janela= int(janela_size*fs) #calculamos o tamanho da janela em amostras
+    passo= int(tam_janela * (1-overlap)) #vamos ver quanto é que a janela vai avançar
     
     segmentos= []
     labels= []
     dispositivos= []
-    data_sorted= data[data[:,10].argsort()]
-    for disp_id in np.unique(data_sorted[:,0]):
-        disp_data= data_sorted[data_sorted[:,0]==disp_id]
+    data_sorted= data[data[:,10].argsort()] #ordenar os dados com base na timestamp para estarem de ordem correta
+    for disp_id in np.unique(data_sorted[:,0]): #percorrer cada dispositivo
+        disp_data= data_sorted[data_sorted[:,0]==disp_id] #filtrar os dados para obtermos apenas as linhas que pertencem ao dispositivo atual
         i=0
-        while i+tam_janela <=len(disp_data):
-            segmento= disp_data[i:i+tam_janela]
-            atividades_seg = np.unique(segmento[:,11])
+        while i+tam_janela <=len(disp_data): #enquanto a janela não ultrapassar o tamanho dos dados
+            segmento= disp_data[i:i+tam_janela] #criamos o segmento, extraindo as linhas de i até i+ tam-janela
+            atividades_seg = np.unique(segmento[:,11])#encontrar os unique labels
             
             if len(atividades_seg)==1:
                 segmentos.append(segmento)
                 labels.append(atividades_seg[0])
                 dispositivos.append(disp_id)
-            i += passo
+            i += passo #vamos deslizar a janela
     print(f"Segmentação concluída: {len(segmentos)} segmentos criados.\n")
     return segmentos, np.array(labels), np.array(dispositivos)
         
 def extrair_features(data):
+    #Esta função concatena as features temporais e espectrais para obtermos uma matriz final
     segmentos,labels,dispositivos= segmentation(data)
 
     if len(segmentos)==0:
@@ -273,15 +291,14 @@ def extrair_features(data):
     
     print("A extrair features de cada segmento...\n")
     features_matrix= []
-    for i, seg in enumerate(segmentos):
-        if i%100==0:
-            print(f"Processados {i} de {len(segmentos)} segmentos...")
+    for i, seg in enumerate(segmentos): #iteramos cada segmento criado 
         feat_temp= features_temporais(seg)
         feat_spec= features_espectrais(seg)
         features_complete= np. concatenate((feat_temp, feat_spec))
         features_matrix.append(features_complete)
         
-    return np.array(features_matrix), np.array(labels), np.array(dispositivos)
+    return np.array(features_matrix), np.array(labels), np.array(dispositivos) #convertemos a features_matrix num array
+    #cada linha é um segmento e cada coluna uma feature
 
 def apply_pca(features_matrix, n_components=None):
     scaler= StandardScaler()
@@ -343,39 +360,6 @@ def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None)
         print(f"  Dimensões: {len(features_pca_75)}")
         print(f"  Valores (primeiras 10): {features_pca_75[:10]}\n")
         
-# --- NOVA FUNÇÃO ADICIONADA ---
-# --- MODIFICADA: Removida a variável global, agora recebe parâmetros ---
-def print_pca_analysis(n_features_original, n_componentes_pca):
-    """
-    Imprime a análise de vantagens e limitações do PCA (Requisito 4.4.2)
-    """
-    print("\n" + "="*80)
-    print("REQUISITO 4.4.2: VANTAGENS E LIMITAÇÕES DO PCA")
-    print("="*80)
-    
-    print("\n💡 VANTAGENS:")
-    print("  • Redução de Dimensionalidade: Comprime um grande número de features (como as "
-          f"{n_features_original} que extraímos) num conjunto muito menor (ex: {n_componentes_pca} componentes), "
-          "mantendo a maior parte da variância (informação).")
-    print("  • Remoção de Redundância: O PCA cria componentes não correlacionados, "
-          "eliminando a multicolinearidade entre as features originais (ex: correlações entre "
-          "média e mediana).")
-    print("  • Visualização: Permite visualizar datasets de alta dimensão em 2D ou 3D "
-          "(usando PC1, PC2, PC3), ajudando a identificar clusters ou padrões.")
-    print("  • Performance: Modelos de Machine Learning treinam mais rapidamente e podem "
-          "ter melhor generalização (reduzindo overfitting) com menos features.")
-
-    print("\n⚠️ LIMITAÇÕES:")
-    print("  • Perda de Interpretabilidade: As Componentes Principais (PCs) são "
-          "combinações lineares de *todas* as features originais. Perdemos a capacidade "
-          "de dizer 'a média da aceleração foi importante'. Em vez disso, dizemos 'a PC1 foi "
-          "importante'.")
-    print("  • Sensibilidade ao Escalamento: O PCA é muito sensível à escala das features. "
-          "(NOTA: Nós mitigámos isto ao usar o `StandardScaler` antes de aplicar o PCA).")
-    print("  • Suposição de Linearidade: O PCA assume que as relações entre as features "
-          "são lineares. Pode falhar em capturar padrões complexos e não-lineares.")
-    print("  • Variância vs. Importância: O PCA assume que as direções de maior variância "
-          "são as mais importantes para a classificação, o que nem sempre é verdade.")
 
 def fisher_score(features, labels):
     print("\n" + "="*80)
