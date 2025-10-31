@@ -265,15 +265,15 @@ def apply_pca(features_matrix, n_components=None):
     
     for i,var in enumerate(pca.explained_variance_ratio_):
         var_acumulada +=var
-        print(f"PC{i+1:<4} {var*100:<15.2f}{var_acumulada*100:<15.2f}\n")
+        print(f"PC{i+1:<4} {var*100:<15.2f}{var_acumulada*100:<15.2f}")
         
         if var_acumulada >= 0.75 and pc_75 is None:
             pc_75= i+1
             
-    print("Para explicarmos 75% do feature set, devemos utilizar {pc_75} componentes principais.\n")
+    print(f"Para explicarmos 75% do feature set, devemos utilizar {pc_75} componentes principais.\n")
         
     for i,eigenval in enumerate(pca.explained_variance_[:10]):
-        print(f"PC{i+1<5}{eigenval:<15.6f\n}")
+        print(f"PC{i+1:<5} {eigenval:<15.6f}")
             
     return pca, features_pca, scaler, pc_75
 
