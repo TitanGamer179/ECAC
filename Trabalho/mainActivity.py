@@ -83,8 +83,6 @@ def main():
     print("INICIANDO ANÁLISE DOS REQUISITOS 4.1 a 4.6")
     print("="*80)
     
-    # --- INÍCIO DA OTIMIZAÇÃO (LÓGICA MOVIDA DE 'calculo.py' PARA AQUI) ---
-    
     # 4.1 - Testes de significância
     print("\n--- Requisito 4.1: Testes de Significância Estatística ---")
     calculo.testes_significativos(all_data_with_magnitudes)
