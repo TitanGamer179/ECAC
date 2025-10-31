@@ -354,49 +354,46 @@ def example_pca(pca, features_matrix, scaler,idx_exemplo=0,n_components_75=None)
         print(f"  Dimensões: {len(features_pca_75)}")
         print(f"  Valores (primeiras 10): {features_pca_75[:10]}\n")
         
-
-def fisher_score(features, labels):
-    print("\n" + "="*80)
-    print("REQUISITO 4.5: SELEÇÃO DE FEATURES (FISHER SCORE)")
-    print("="*80)
+#Esta é uma das duas funções que vão ser implementadas no âmbito do exercício 4.4.
+#Têm como objetivo a realização dos testes Fisher Score e Relieff
+#No fisher-score, uma feature é considerada boa se maximiza a distância entre classes e ao mesmo tempo minimiza a variância dentro de cada classe
+def fisher_score(features, labels): 
+    n_features= features.shape[1] #vamos buscar o número de features da matriz
+    n_classes= len(np.unique(labels)) #calculamos o número de atividades
+    fisher_scores= np.zeros(n_features) # cria um array de zeros para guardarmos o score de cada feature
     
-    n_features= features.shape[1]
-    n_classes= len(np.unique(labels))
-    fisher_scores= np.zeros(n_features) # <-- Esta é a variável correta (plural)
+    mean_global= np.mean(features, axis=0) #calcula a média global de todas as amostras de cada feature (calcular ao longo das colunas)
     
-    mean_global= np.mean(features, axis=0)
-    
-    for i in range(n_features):
-        features_col = features[:,i]
+    for i in range(n_features): #vamos calcular o score para cada feature
+        features_col = features[:,i] #selecionamos todos os dados para a feature i
         
-        sb=0 # Variância inter-classes (Between)
-        mean_classe_geral = {} # Armazenar médias para o cálculo de sw
+        sb=0 # variável sb (soma da variância Between Classes/ Inter-classes)
+        mean_classe_geral = {} # criamos um dicionário para guardar a média de cada classe
         
-        for classe in np.unique(labels):
-            indices_classe= labels ==classe
-            n_classe= np.sum(indices_classe)
+        for classe in np.unique(labels): #iterarmos por cada atividade
+            indices_classe= labels ==classe #com uma máscara booleana, selecionamos apenas as linhas que pertencem à atividade atual
+            n_classe= np.sum(indices_classe) #conta quantas amostras n_c pertencem a esta atividade
             if n_classe > 0:
-                mean_classe= np.mean(features_col[indices_classe])
+                mean_classe= np.mean(features_col[indices_classe]) #calcula a média da feature i para a atividade
                 mean_classe_geral[classe] = mean_classe
-                sb += n_classe* (mean_classe - mean_global[i])**2
+                sb += n_classe* (mean_classe - mean_global[i])**2 #calculamos a variância inter-classes. as melhores features terão médias de classe uc londe da média global, e um sb alto.
             
-        sw=0 # Variância intra-classes (Within)
+        sw=0 # variável sw (soma da variância Within Classes/ Intra-classes)
         for classe in np.unique(labels):
             indices_classe= labels ==classe
             if np.sum(indices_classe) > 0:
                 feature_classe= features_col[indices_classe]
                 mean_classe = mean_classe_geral[classe] # Usar a média calculada
-                sw +=np.sum((feature_classe - mean_classe)**2)
+                sw +=np.sum((feature_classe - mean_classe)**2) #calculamos a variância intra-classe. as melhores features têm dados muito próximos da média, e um sw baixo.
 
         if sw>0:
-            # --- CORREÇÃO DO ERRO ---
-            fisher_scores[i]= sb/sw  # Era: fisher_score[i]
+            fisher_scores[i]= sb/sw  # calculamos o fisher_score com a razão sb/sw
         else:
-            # --- CORREÇÃO DO ERRO ---
-            fisher_scores[i]=0       # Era: fisher_score[i]
+            fisher_scores[i]=0   
     
-    ranking= np.argsort(fisher_scores)[::-1]
+    ranking= np.argsort(fisher_scores)[::-1] #array da melhor feature(melhor score) para a pior
     
+    #Imprimir as 10 melhores features de acordo com o teste
     print("\nTop 10 Features (Fisher Score):")
     print(f"{'Rank':<6} {'Feature ID':<12} {'Score':<15}")
     print("-" * 35)
@@ -406,35 +403,31 @@ def fisher_score(features, labels):
         
     return fisher_scores, ranking
 
+#Esta função executa o teste de Relieff
+#Neste teste, uma feature é considerada boa se ela conseguir separar amostras de classes diferentes, e ao mesmo tempo manter juntas amostras da mesma classe-
 def relieff(features, labels, k=10):
-    print("\n" + "="*80)
-    print("REQUISITO 4.5: SELEÇÃO DE FEATURES (RELIEFF)")
-    print("="*80)
-    
-    n_samples, n_features= features.shape
+    n_samples, n_features= features.shape #obter o número de amostras e features
     weights= np.zeros(n_features)
     
     scaler= MinMaxScaler()
-    features_norm= scaler.fit_transform(features)
+    features_norm= scaler.fit_transform(features) #normalizar os dados para se ter uma avaliação mais justa
     
-    n_iterations = min(n_samples,500)
-    indices = np.random.choice(n_samples, n_iterations, replace=False)
+    n_iterations = min(n_samples,500) #uma questão de otimização, o teste de relieff não é muito eficiente para grandes datasets, por isso selecionam-se 500 amostras
+    indices = np.random.choice(n_samples, n_iterations, replace=False) #seleciona 500 índices aleatórios de amostras. Garante que cada amostra é escolhida no máximo uma vez.
     
     for iter_idx, i in enumerate(indices):
-        if iter_idx %100 ==0:
-            print(f"Processamento da amostra {iter_idx}/{n_iterations}")
-        sample= features_norm[i]
-        sample_label= labels[i]
+        sample= features_norm[i] #vamos pegar no vetor de features da amostra i
+        sample_label= labels[i] #pega no label da amostra i
         
-        distances = np.sqrt(np.sum((features_norm- sample)**2, axis=1))
-        distances[i]= np.inf
+        distances = np.sqrt(np.sum((features_norm- sample)**2, axis=1)) #cálculo da distância euclidiana da sample para todas as amostras no dataset
+        distances[i]= np.inf #define a distância da amostra para si mesma como infinito, para se garantir que ela não se eocontra a si própria como a vizinha mais próxima
         
         same_class_mask = labels == sample_label
         same_class_distances = distances.copy()
-        same_class_distances[~same_class_mask] = np.inf
+        same_class_distances[~same_class_mask] = np.inf #criamos uma cópia das distâncias e define a distância de todas as amostras de outras classes
         # Garantir que temos vizinhos suficientes
         if np.sum(same_class_mask) > 1:
-            near_hit_indices = np.argsort(same_class_distances)[:k]
+            near_hit_indices = np.argsort(same_class_distances)[:k] #pegamos nos índices dos k mais próximos
         else:
             near_hit_indices = []
 
@@ -483,13 +476,6 @@ def relieff(features, labels, k=10):
     return weights, ranking
     
 def comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, relieff_ranking):
-    """
-    Compara os resultados do Fisher Score e ReliefF.
-    """
-    print("\n" + "="*80)
-    print("REQUISITO 4.6: COMPARAÇÃO FISHER SCORE vs RELIEFF")
-    print("="*80)
-    
     print("\nTop 10 Features selecionadas por cada método:")
     print(f"{'Rank':<6} {'Fisher Score (ID)':<20} {'ReliefF (ID)':<20}")
     print("-" * 50)
@@ -506,50 +492,8 @@ def comparar_fisher_relieff(fisher_scores, fisher_ranking, relieff_weights, reli
     print(f"\nFeatures em comum no Top 10: {len(comum)}")
     print(f"Features comuns: {sorted(list(comum))}")
     
-    print("\n" + "="*80)
-    print("ANÁLISE COMPARATIVA:")
-    print("="*80)
-    
-    print("\nFISHER SCORE:")
-    print("  • Método: Estatístico (variância inter/intra-classes).")
-    print("  • Tipo: Filtro univariado (analisa cada feature isoladamente).")
-    print("  • Vantagem: Muito rápido e simples de calcular.")
-    print("  • Limitação: Ignora interações e redundâncias entre features. "
-          "Pode selecionar features redundantes (ex: média e mediana, que são "
-          "altamente correlacionadas).")
-    
-    print("\nRELIEFF:")
-    print("  • Método: Baseado em instâncias (vizinhos próximos).")
-    print("  • Tipo: Filtro multivariado (sensível ao contexto das features).")
-    print("  • Vantagem: Consegue detetar features que só são úteis em conjunto "
-          "(interações) e penaliza features redundantes.")
-    print("  • Limitação: Computacionalmente mais caro (precisa de calcular "
-          "distâncias) e sensível ao parâmetro 'k' (número de vizinhos).")
-    
-    print("\nDIFERENÇAS OBSERVADAS:")
-    if len(comum) > 7:
-        print(f"  • Alta concordância ({len(comum)}/10). Isto sugere que as features mais "
-              "discriminantes são tão fortes que ambos os métodos as detetam, "
-              "independentemente das suas interações.")
-    elif len(comum) > 4:
-        print(f"  • Concordância moderada ({len(comum)}/10). Ambos os métodos encontram "
-              "um núcleo de features úteis, mas diferem nas restantes, "
-              "provavelmente porque o ReliefF encontrou interações que o Fisher ignorou.")
-    else:
-        print(f"  • Baixa concordância ({len(comum)}/10). Isto indica que os dois métodos "
-              "têm visões muito diferentes. O Fisher escolhe features com "
-              "médias de classe muito separadas, enquanto o ReliefF "
-              "escolhe features que ajudam a separar vizinhos difíceis.")
         
 def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, idx_exemplo=0):
-    """
-    Exemplifica a seleção de features para um segmento.
-    """
-    print(f"\n{'='*80}")
-    print(f"REQUISITO 4.6.1: EXEMPLO DE SELEÇÃO DE FEATURES")
-    print(f"{'='*80}")
-    
-    # Selecionar exemplo
     features_original = feature_matrix[idx_exemplo]
     
     print(f"\n1. Features ORIGINAIS (segmento #{idx_exemplo}):")
@@ -576,36 +520,3 @@ def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, id
     print(f"   Dimensões originais: {len(features_original)}")
     print(f"   Dimensões após seleção: 10")
     print(f"   Redução: {(1 - 10/len(features_original))*100:.1f}%")
-
-# --- NOVA FUNÇÃO ADICIONADA ---
-# --- MODIFICADA: Removida a variável global, agora recebe parâmetros ---
-def print_selection_analysis(n_features_original, n_componentes_pca):
-    """
-    Imprime a análise de vantagens e limitações da Seleção de Features (Req 4.6.2)
-    """
-    print(f"\n{'='*80}")
-    print(f"REQUISITO 4.6.2: VANTAGENS E LIMITAÇÕES DA SELEÇÃO DE FEATURES")
-    print(f"{'='*80}")
-    
-    print("\n💡 VANTAGENS:")
-    print("  • Interpretabilidade: Esta é a maior vantagem sobre o PCA. O modelo final "
-          "usa as features originais (ex: 'média do giroscópio-x', 'std da aceleração-z'). "
-          "Podemos interpretar *quais* características físicas são importantes.")
-    print("  • Eficiência: Criar um modelo com 10 features é muito mais rápido do que "
-          f"com {n_features_original} (ou mesmo com as "
-          f"{n_componentes_pca} do PCA).")
-    print("  • Robustez a Overfitting: Ao remover features irrelevantes ou redundantes, "
-          "o modelo pode generalizar melhor para novos dados.")
-
-    print("\n⚠️ LIMITAÇÕES:")
-    print("  • Perda de Informação: Ao contrário do PCA, que *comprime* a informação, "
-          "a seleção *descarta* features. Se uma feature tiver uma pequena contribuição "
-          "mas for útil em conjunto com outras, pode ser descartada, perdendo-se essa "
-          "informação.")
-    print("  • Risco de Sub-otimização: Métodos de filtro (como Fisher e ReliefF) "
-          "selecionam features *antes* do treino do modelo. Eles podem não escolher o "
-          "conjunto de features que seria ótimo *para esse modelo específico* "
-          "(ex: um SVM ou uma Random Forest).")
-    print("  • Dependência do Método: Como vimos, Fisher (univariado) e ReliefF "
-          "(multivariado) podem dar resultados diferentes. A escolha do método de "
-          "seleção influencia muito o resultado.")
