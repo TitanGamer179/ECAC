@@ -76,13 +76,7 @@ def main():
     print(f"Número de outliers detetados com DBSCAN: {np.sum(outliers_dbscan_mask)}")
     print("\nAnálise concluída.")
     
-    # ========================================================================
-    # INICIANDO ANÁLISE DOS REQUISITOS 4.1 a 4.6
-    # ========================================================================
-    print("\n" + "="*80)
-    print("INICIANDO ANÁLISE DOS REQUISITOS 4.1 a 4.6")
-    print("="*80)
-    
+
     # 4.1 - Testes de significância
     print("\n--- Requisito 4.1: Testes de Significância Estatística ---")
     calculo.testes_significativos(all_data_with_magnitudes)
@@ -128,14 +122,7 @@ def main():
     # 4.6.2 - Vantagens e Limitações Seleção
     print("\n--- Requisito 4.6.2: Vantagens e Limitações da Seleção ---")
     calculo.print_selection_analysis(feature_matrix.shape[1], pc_75)
-    # ========================================================================
-    # VISUALIZAÇÕES ADICIONAIS
-    # ========================================================================
-    
-    print("\n" + "="*80)
-    print("VISUALIZAÇÕES ADICIONAIS")
-    print("="*80)
-    
+
     # Gráficos PCA
     print("\nA gerar visualizações PCA...")
     # (Usar as variáveis locais em vez de 'resultados[...]')
@@ -159,65 +146,6 @@ def main():
         top_n=10
     )
     
-    # Matriz de correlação das top features
-    print("\nA gerar matriz de correlação...")
-    top_10_fisher = fisher_ranking[:10]
-    graficos.plot_matriz_correlacao_features(
-        feature_matrix, 
-        top_10_fisher,
-        ['F'+str(i) for i in top_10_fisher]
-    )
-    
-    # ========================================================================
-    # RESUMO FINAL
-    # ========================================================================
-    
-    print("\n" + "="*80)
-    print("RESUMO FINAL DA ANÁLISE")
-    print("="*80)
-    
-    # (Usar as variáveis locais em vez de 'resultados[...]')
-    print(f"""
-📊 ESTATÍSTICAS GERAIS:
-  • Total de amostras originais: {all_data.shape[0]}
-  • Total de segmentos extraídos: {feature_matrix.shape[0]}
-  • Dimensionalidade original: {feature_matrix.shape[1]} features
-  • Atividades únicas: {len(np.unique(labels))}
-  • Dispositivos únicos: {len(np.unique(dispositivos))}
-
-🔬 PCA (Redução de Dimensionalidade):
-  • Componentes para 75% variância: {pc_75}
-  • Redução de dimensionalidade: {(1 - pc_75/feature_matrix.shape[1])*100:.1f}%
-  • Variância explicada PC1: {pca.explained_variance_ratio_[0]*100:.2f}%
-  • Variância explicada PC2: {pca.explained_variance_ratio_[1]*100:.2f}%
-
-🎯 SELEÇÃO DE FEATURES:
-  • Top 10 Fisher Score: {list(fisher_ranking[:10])}
-  • Top 10 ReliefF: {list(relieff_ranking[:10])}
-  • Features comuns (Top 10): {len(set(fisher_ranking[:10]) & set(relieff_ranking[:10]))}
-
-💡 RECOMENDAÇÕES:
-  1. Para classificação, considerar as Top 10-15 features de Fisher ou ReliefF
-  2. PCA com {pc_75} componentes mantém 75% da informação
-  3. Dados NÃO são normalmente distribuídos → preferir métodos não-paramétricos
-  4. Alta variabilidade entre dispositivos → considerar normalização por dispositivo
-  5. Atividades de transição têm maior densidade de outliers
-    """)
-    
-    # Guardar resultados (opcional)
-    print("\n" + "="*80)
-    print("A guardar resultados...")
-    print("="*80)
-    
-    try:
-        np.savez('resultados_analise.npz',feature_matrix=feature_matrix,labels=labels,dispositivos=dispositivos,features_pca=features_pca,fisher_scores=fisher_scores,fisher_ranking=fisher_ranking,relieff_weights=relieff_weights,relieff_ranking=relieff_ranking,pc_75=pc_75)
-        print("✓ Resultados guardados em 'resultados_analise.npz'")
-    except Exception as e:
-        print(f"✗ Erro ao guardar resultados: {e}")
-    
-    print("\n" + "="*80)
-    print("ANÁLISE COMPLETA CONCLUÍDA COM SUCESSO!")
-    print("="*80)
 
 if __name__ == "__main__":
     main()
