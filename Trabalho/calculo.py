@@ -120,7 +120,7 @@ def testes_significativos(data):
                         #para 0 e 1, para conseguirmos fazer uma comparação com o standart
                         #o teste KS compara a distribuição empírica dos dados com uma distribuição 
                         #normal teórica.
-                        ks_stat, p_value = kstest(dados_norm, 'norm') #teste KS
+                        _, p_value = kstest(dados_norm, 'norm') #teste KS
                     else:
                         p_value = 1.0 # Dados constantes, tecnicamente não violam a normalidade
                         
@@ -152,7 +152,7 @@ def testes_significativos(data):
             #Caso não tenham distribuição normal, utiliza-se o teste de Kruskal-Wallis 
             else:  
                 print("Nem todas as atividades têm distribuição normal. A realizar o teste de Kruskal-Wallis...\n")
-                h_stat, p_value= kruskal(*dadospor_atividade) #realizamos o teste de Kruskal-Wallis
+                _, p_value= kruskal(*dadospor_atividade) #realizamos o teste de Kruskal-Wallis
                 if p_value <0.05:
                     print(f"Diferença significativa encontrada (p={p_value:.4e}) usando Kruskal-Wallis.")
                 else:
@@ -227,7 +227,7 @@ def features_temporais(segmento):
         
     return np.array(features) #convertemos a lista final e devolve
 
-def features_espectrais(segmento, fs=51.2):
+def features_espectrais(segmento):
     #Função muito semelhante à anterior, mas desta vez vamos extrair features
     #espectrais, sendo estas a Entropia Espectral
     features = []

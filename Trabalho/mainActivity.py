@@ -56,11 +56,7 @@ def main():
     n_clusters = 8     
     subset_data = all_data_with_magnitudes[(all_data_with_magnitudes[:, 0] == device_id) & (all_data_with_magnitudes[:, 11] == activity_id)]
     acc_data_3d = subset_data[:, 1:4]
-    giro_data_3d = subset_data[:, 4:7]
-    mag_data_3d = subset_data[:, 7:10]
     cluster_labels_acc = calculo.aplicar_kmeans(acc_data_3d, n_clusters)
-    cluster_labels_giro = calculo.aplicar_kmeans(giro_data_3d, n_clusters)
-    cluster_labels_mag = calculo.aplicar_kmeans(mag_data_3d, n_clusters)
     print("\nAnálise concluída.")
     
     # 3.7 - Deteção de Outliers com k-Means e DBSCAN

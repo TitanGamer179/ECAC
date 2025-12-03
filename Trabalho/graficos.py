@@ -88,94 +88,85 @@ def plot_testes_significativos_mpl(data):
         14: 'Módulo Magnetómetro'
     }
     
-    #Histograma
-    dados_para_hist = []
-    labels_para_hist = []
-            
-    for ativ in atividades:
-        dados_ativ = disp_dados[disp_dados[:, 11] == ativ, var_idx]
-        # Só plotamos se tivermos dados suficientes 
-        if len(dados_ativ) > 2:
-            dados_para_hist.append(dados_ativ)
-            labels_para_hist.append(int(ativ))
-            
-        if not dados_para_hist:
-            print(f"Sem dados para plotar histogramas para {var_nome}")
-            continue
-                
-        # Calcular o tamanho da grelha 
-        n_plots = len(labels_para_hist)
-        n_cols = 4
-        n_rows = int(np.ceil(n_plots / n_cols))
-            
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, 4 * n_rows))
-        axes = axes.flatten() 
-            
-        for i in range(n_plots):
-            ax = axes[i] # O 'eixo' (área de plotagem) atual
-            dados_ativ = dados_para_hist[i]
-            label_ativ = labels_para_hist[i]
-                
-            ax.hist(dados_ativ, bins=30, alpha=0.7, density=True, label='Dados')
-                
-            #Tentar sobrepor a curva normal ideal (o que o kstest compara)
-            if np.std(dados_ativ) > 0:
-                try:
-                    mu, std = stats.norm.fit(dados_ativ) # Encontra a média e std
-                    xmin, xmax = ax.get_xlim()
-                    x = np.linspace(xmin, xmax, 100)
-                    p = stats.norm.pdf(x, mu, std) # Cria a curva normal
-                    ax.plot(x, p, 'r--', linewidth=2, label='Curva Normal')
-                except Exception:
-                    pass # Ignora se o 'fit' falhar
-
-            ax.set_title(f'Atividade {label_ativ}')
-            ax.set_xlabel(var_nome)
-            ax.set_ylabel('Densidade')
-                
-            # Ocultar subplots que não foram usados
-            for j in range(n_plots, len(axes)):
-                axes[j].set_visible(False)
-            
-            fig.suptitle(f'Verificação de Normalidade para {var_nome}\nDispositivo {int(disp)}', 
-                           y=1.03, fontsize=16)
-        plt.tight_layout()
-        plt.show()
-        
-    #Boxplots
+    # Definição movida para o topo (scope fix)
     dispositivos = sorted(np.unique(data[:, 0]))
-    atividades = sorted(np.unique(data[:, 11])) # Lista de todas as IDs de atividades
+    atividades = sorted(np.unique(data[:, 11]))
+
     for disp in dispositivos:
         print(f"\n--- A gerar gráficos para o Dispositivo {int(disp)} ---")
-        
-        # Filtrar dados para o dispositivo atual
         disp_dados = data[data[:, 0] == disp]
         
         for var_idx, var_nome in variaveis.items():
-            
             print(f"A processar variável: {var_nome}")
             
+            # --- Histogramas ---
+            dados_para_hist = []
+            labels_para_hist = []
+            
+            for ativ in atividades:
+                dados_ativ = disp_dados[disp_dados[:, 11] == ativ, var_idx]
+                if len(dados_ativ) > 2:
+                    dados_para_hist.append(dados_ativ)
+                    labels_para_hist.append(int(ativ))
+            
+            if dados_para_hist:
+                n_plots = len(labels_para_hist)
+                n_cols = 4
+                n_rows = int(np.ceil(n_plots / n_cols))
+                
+                fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, 4 * n_rows))
+                if n_rows * n_cols > 1:
+                    axes = axes.flatten()
+                else:
+                    axes = [axes]
+                
+                for i in range(n_plots):
+                    ax = axes[i]
+                    dados_ativ = dados_para_hist[i]
+                    label_ativ = labels_para_hist[i]
+                    
+                    ax.hist(dados_ativ, bins=30, alpha=0.7, density=True, label='Dados')
+                    
+                    if np.std(dados_ativ) > 0:
+                        try:
+                            mu, std = stats.norm.fit(dados_ativ)
+                            xmin, xmax = ax.get_xlim()
+                            x = np.linspace(xmin, xmax, 100)
+                            p = stats.norm.pdf(x, mu, std)
+                            ax.plot(x, p, 'r--', linewidth=2, label='Curva Normal')
+                        except Exception:
+                            pass
+
+                    ax.set_title(f'Atividade {label_ativ}')
+                    ax.set_xlabel(var_nome)
+                    ax.set_ylabel('Densidade')
+                
+                # Ocultar subplots vazios
+                for j in range(n_plots, len(axes)):
+                    axes[j].set_visible(False)
+                
+                fig.suptitle(f'Verificação de Normalidade para {var_nome}\nDispositivo {int(disp)}', 
+                               y=1.03, fontsize=16)
+                plt.tight_layout()
+                plt.show()
+            
+            # --- Boxplots ---
             dados_para_boxplot = []
             labels_para_boxplot = []
             
             for ativ in atividades:
-                # Extrai os dados para esta atividade e variável
                 dados_ativ = disp_dados[disp_dados[:, 11] == ativ, var_idx]
                 if len(dados_ativ) > 0:
                     dados_para_boxplot.append(dados_ativ)
-                    labels_para_boxplot.append(int(ativ)) # Guarda o ID da atividade
+                    labels_para_boxplot.append(int(ativ))
             
             if not dados_para_boxplot:
                 print(f"Sem dados para plotar boxplot para {var_nome}")
                 continue
 
             plt.figure(figsize=(16, 7))
-            # Criar o boxplot
             plt.boxplot(dados_para_boxplot)
-            
-            # Definir os rótulos do eixo X para corresponderem às atividades
             plt.xticks(range(1, len(labels_para_boxplot) + 1), labels_para_boxplot)
-            
             plt.title(f'Comparação de Atividades para {var_nome}\nDispositivo {int(disp)}', fontsize=16)
             plt.xlabel('ID da Atividade', fontsize=12)
             plt.ylabel(var_nome, fontsize=12)
@@ -316,7 +307,7 @@ def plot_relieff_weights(relieff_weights, top_n=10):
 #Gráfico que compara os resultados de maneira visual, utilizando um diagrama de Venn para mostrar as features mais comuns
 def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
     # Top N de cada método
     top_fisher = fisher_ranking[:top_n]
@@ -347,7 +338,7 @@ def plot_comparacao_fisher_relieff(fisher_ranking, relieff_ranking, top_n=10):
     set_relieff = set(top_relieff)
     comum = set_fisher & set_relieff
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    _, ax = plt.subplots(figsize=(10, 6))
     
     # Círculo Fisher
     circle1 = plt.Circle((0.3, 0.5), 0.3, color='steelblue', alpha=0.3, label='Fisher')
