@@ -7,7 +7,8 @@ import graficoB
 
 def main():
     print("\n--Requisito 1.1: Análise e Visualizção do Balanço de Classes ---\n")
-    dir_path="C:\\Users\\titin\\Downloads\\vscode\\ecac\\ECAC\\Trabalho\\diretoria"
+    dir_=os.path.dirname(os.path.abspath(__file__))
+    dir_path=os.path.join(dir_,'diretoria')
     all_data = openfile.open_all_files(dir_path)
     if all_data.size == 0:
         print("Nenhum dado foi carregado. Verifique o caminho da diretoria.")
@@ -17,4 +18,6 @@ def main():
     activity_labels = all_activity[all_activity <=7]
     graficoB.generate_examples(activity_labels)
     print("Gráfico de balanço de classes gerado com sucesso!")
-        
+
+if __name__ == "__main__":
+    main()
