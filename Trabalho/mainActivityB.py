@@ -20,6 +20,9 @@ def main():
     print("Dados filtrados com sucesso!")
     feats,lables,parts=calculo.extrair_features(all_data)
     segs_raw, labels_seg, parts_seg = calculo.segmentation(all_data)
+    #======== Requisito 1.1.1: Análise do Balanço de Classes ========
+    print("\n--Requisito 1.1.1: Análise do Balanço de Classes ---\n")
+    
 
 if __name__ == "__main__":
     main()
