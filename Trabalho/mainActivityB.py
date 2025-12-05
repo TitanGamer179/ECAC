@@ -7,6 +7,7 @@ import calculoB
 import calculo
 
 def main():
+    datasets={}
     # =========================================================================
     # 0. LOAD DATA
     # =========================================================================
@@ -92,6 +93,10 @@ def main():
     print("\n--- Métricas Relief Features ---")
     calculoB.calculate_metrics(y_test, test_predrelief)
     print("Métricas calculadas com sucesso!")
+    datasets={
+        "Manual Features": (feats, lables),
+        "Embedding Features 30Hz": (embed_feats_30Hz, labels_seg,parts_seg)
+    }
     #=========================================================================
     #5. Evaluation
     #=========================================================================

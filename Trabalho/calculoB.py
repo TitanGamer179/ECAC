@@ -77,9 +77,11 @@ def extract_embedding_features(features,target_fs=30,n_components=64):
         for i in range(0, x_all.shape[0], batch_size):
             batch = x_all[i:i+batch_size]
             batch_tensor = torch.tensor(batch, dtype=torch.float32)
-            embeddings = feature_encoder(batch_tensor).numpy()
+            embeddings = feature_encoder(batch_tensor)
             embeddings_list.append(embeddings.cpu().numpy())
     final_embeddings=np.concatenate(embeddings_list, axis=0)
+    if final_embeddings.ndim > 2:
+        final_embeddings=final_embeddings.reshape(final_embeddings.shape[0], -1)
     return final_embeddings
 
 # Requisito 3.1: TVT Split 60-20-20 por Participante

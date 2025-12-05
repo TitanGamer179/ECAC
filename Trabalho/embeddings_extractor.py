@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 
+
 def load_model():
   ''' Loads the model from the github repo and obtains just the feature encoder. '''
 
@@ -72,7 +73,7 @@ def acc_segmentation(data):
 
 
 # load example file to test embedding
-csv_file_path = '/content/part13dev1.csv'
+csv_file_path = 'C:\\Users\\User\\OneDrive - Universidade de Coimbra\\Ambiente de Trabalho\\Aulas\\ECAC\\ECAC\\Trabalho\\diretoria\\part13\\part13dev1.csv'
 csv_data = np.loadtxt(csv_file_path, delimiter=',')
 
 original_segments, activities = acc_segmentation(csv_data)
@@ -99,4 +100,3 @@ with torch.no_grad():
 
 embeddings = np.concatenate(embeddings_list, axis=0)
 print(embeddings.shape)
-
