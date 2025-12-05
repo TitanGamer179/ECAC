@@ -415,7 +415,7 @@ def relieff(features, labels, k=10):
     n_iterations = min(n_samples,500) #uma questão de otimização, o teste de relieff não é muito eficiente para grandes datasets, por isso selecionam-se 500 amostras
     indices = np.random.choice(n_samples, n_iterations, replace=False) #seleciona 500 índices aleatórios de amostras. Garante que cada amostra é escolhida no máximo uma vez.
     
-    for iter_idx, i in enumerate(indices):
+    for _, i in enumerate(indices):
         sample= features_norm[i] #vamos pegar no vetor de features da amostra i
         sample_label= labels[i] #pega no label da amostra i
         

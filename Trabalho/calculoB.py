@@ -4,6 +4,7 @@ from scipy.signal import resample
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import random
 import calculo
 
@@ -97,8 +98,6 @@ def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2):
 # Requisito 3.2: TVT Split por Participante
 def split_between_subjects(parts):
     unique_parts = np.unique(parts)
-    if(len(unique_parts)<15):
-        raise ValueError("Número insuficiente de participantes para divisão entre sujeitos.")
     np.random.seed(42)
     shuffled_parts = np.random.permutation(unique_parts)
     train_p_ids=shuffled_parts[:9]
@@ -127,9 +126,9 @@ def combined_split(x_train, y_train, x_val,x_test, method):
         x_train_pca=pca.fit_transform(x_train_norm)
         x_val_pca=pca.transform(x_val_norm)
         x_test_pca=pca.transform(x_test_norm)
-        return x_train_pca, x_val_pca, x_test_pca,scaler,scaler,pca
+        return x_train_pca, x_val_pca, x_test_pca,scaler,pca
     elif method == "relief":
-        _,ranking=calculo.reliefF(x_train_norm,y_train,n_neighbors=10)
+        _,ranking=calculo.relieff(x_train_norm,y_train,k=10)
         top_15_idx=ranking[:15]
         x_train_relief=x_train_norm[:,top_15_idx]
         x_val_relief=x_val_norm[:,top_15_idx]
@@ -137,3 +136,41 @@ def combined_split(x_train, y_train, x_val,x_test, method):
         return x_train_relief, x_val_relief, x_test_relief,scaler,top_15_idx
     else:
         raise ValueError("Método desconhecido. Use 'all', 'pca' ou 'relief'.")
+
+# Requisito 4.1 : Treinamento e Avaliação do k-NN
+def train_evaluate_knn(X_train, y_train, X_val, y_val, X_test, y_test, k):
+    knn = NearestNeighbors(n_neighbors=k)
+    knn.fit(X_train)
+    _, val_indices = knn.kneighbors(X_val)
+    val_predictions = []
+    for indices in val_indices:
+        neighbor_labels = y_train[indices].astype(int)
+        pred_label = np.bincount(neighbor_labels).argmax()
+        val_predictions.append(pred_label)
+    val_accuracy = np.mean(np.array(val_predictions) == y_val.astype(int))
+    print(f"Acurácia na validação com k={k}: {val_accuracy:.4f}")
+    
+    _, test_indices = knn.kneighbors(X_test)
+    test_predictions = []
+    for indices in test_indices:
+        neighbor_labels = y_train[indices].astype(int)
+        pred_label = np.bincount(neighbor_labels).argmax()
+        test_predictions.append(pred_label)
+    test_accuracy = np.mean(np.array(test_predictions) == y_test.astype(int))
+    print(f"Acurácia no teste com k={k}: {test_accuracy:.4f}")
+    
+    return knn, np.array(test_predictions)
+
+# Requisito 4.2: Cálculo de Métricas de Avaliação
+def calculate_metrics(y_true, y_pred):
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+    recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+    f1 = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+    conf_matrix = confusion_matrix(y_true, y_pred)
+    print(f"Acurácia: {accuracy:.4f}")
+    print(f"Precisão: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
+    print("Matriz de Confusão:")
+    print(conf_matrix)

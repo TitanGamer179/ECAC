@@ -57,24 +57,52 @@ def main():
     X_train=embed_feats_30Hz[train_idx]
     y_train=labels_seg[train_idx]
     X_val=embed_feats_30Hz[val_idx]
+    y_val=labels_seg[val_idx]
     X_test=embed_feats_30Hz[test_idx]
+    y_test=labels_seg[test_idx]
     print("Divisão concluída com sucesso!")
     #3.2 Subject Level Split
     print("Dividindo os dados usando a estratégia TVT Split por participante...")
     train_idx, val_idx, test_idx = calculoB.split_between_subjects(parts_seg)
     #3.4 Method: "all";"pca";"relief"
     print("a)Usando método de seleção de features: All features")
-    X_train_all, X_val_all, X_test_all, scaler_all, _= calculoB.combined_split(X_train, y_train, train_idx, X_val, X_test, method="all")
+    X_train_all, X_val_all, X_test_all, scaler_all, _= calculoB.combined_split(X_train, y_train, X_val, X_test, method="all")
     print("b)Usando método de seleção de features: pca features")
-    X_train_pca, X_val_pca, X_test_pca, scaler_pca, pca_model = calculoB.combined_split(X_train, y_train, train_idx, X_val, X_test, method="pca")
+    X_train_pca, X_val_pca, X_test_pca, scaler_pca, pca_model = calculoB.combined_split(X_train, y_train, X_val, X_test, method="pca")
     print("c)Usando método de seleção de features: relief features")
-    X_train_relief, X_val_relief, X_test_relief, scaler_relief, selector_relief = calculoB.combined_split(X_train, y_train, train_idx, X_val, X_test, method="relief")
+    X_train_relief, X_val_relief, X_test_relief, scaler_relief, selector_relief = calculoB.combined_split(X_train, y_train, X_val, X_test, method="relief")
     print("Seleção de features concluída com sucesso!")
     #==========================================================================
     #4. Model learning
     #==========================================================================
     print("Iniciando o treinamento do modelo...")
-    #Implementar a k-Neaarest neighbors (k-NN) para classificação
+    k_value=3
+    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando todas as features:")
+    knall, test_predall = calculoB.train_evaluate_knn(X_train_all, y_train, X_val_all, y_val, X_test_all, y_test, k_value)
+    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando features PCA:")
+    knpca, test_predpca = calculoB.train_evaluate_knn(X_train_pca, y_train, X_val_pca, y_val, X_test_pca, y_test, k_value)
+    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando features Relief:")
+    knrelief, test_predrelief = calculoB.train_evaluate_knn(X_train_relief, y_train, X_val_relief, y_val, X_test_relief, y_test, k_value)
+    print("Treinamento e avaliação do modelo concluídos!")
+    #4.2 Avaliação do Modelo metricas
+    print("Calculando métricas de avaliação do modelo...")
+    print("\n--- Métricas All Features ---")
+    calculoB.calculate_metrics(y_test, test_predall)
+    print("\n--- Métricas PCA Features ---")
+    calculoB.calculate_metrics(y_test, test_predpca)
+    print("\n--- Métricas Relief Features ---")
+    calculoB.calculate_metrics(y_test, test_predrelief)
+    print("Métricas calculadas com sucesso!")
+    #=========================================================================
+    #5. Evaluation
+    #=========================================================================
+    #=========================================================================
+    #6. Deployment
+    #=========================================================================
+    #=========================================================================
+    #7. Go further
+    #=========================================================================
+    
     
 
 if __name__ == "__main__":
