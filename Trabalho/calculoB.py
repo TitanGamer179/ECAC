@@ -61,7 +61,7 @@ def apply_smote(features, labels):
         return features, labels
 
 # Requesito 2.1: Extração de Features de Embedding
-def extract_embedding_features(features,target_fs=30,n_components=64):
+def extract_embedding_features(features):
     print("Carregando modelo Harnet5...")
     feature_encoder = embeddings_extractor.load_model()
     processed_features = []

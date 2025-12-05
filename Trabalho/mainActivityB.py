@@ -21,7 +21,7 @@ def main():
     #all_data=calculo.add_magnitude(all_data)
     all_data=all_data[all_data[:, 11] <= 7] 
     print("Dados filtrados com sucesso!")
-    feats,lables,_=calculo.extrair_features(all_data)
+    feats_manual,lables_manual,parts_manual=calculo.extrair_features(all_data)
     segs_raw, labels_seg, parts_seg = calculo.segmentation(all_data)
     # =========================================================================
     # 1. DATA AUGMENTATION
@@ -29,11 +29,11 @@ def main():
     print("INICIANDO DATA AUGMENTATION...\n")
     #1.1 Analise de Balanceamento
     print("Analisando balanceamento dos dados...")
-    calculoB.check_balance(lables)
-    graficoB.plot_balance(lables, title="Distribuição Original")
+    calculoB.check_balance(lables_manual)
+    graficoB.plot_balance(lables_manual, title="Distribuição Original")
     #1.2 Create SMOTE
     print("Aplicando SMOTE para balanceamento dos dados...")
-    feats_aug, lables_aug = calculoB.apply_smote(feats, lables)
+    feats_aug, lables_aug = calculoB.apply_smote(feats_manual, lables_manual)
     calculoB.check_balance(lables_aug)
     graficoB.plot_balance(lables_aug, title="Distribuição Após SMOTE")
     #1.3 Visualização de Augmentação
@@ -45,7 +45,7 @@ def main():
     print("Extraindo features de embedding...")
     #2.1 Extract embedding(30HZ)
     print("Extraindo features de embedding a 30HZ...")
-    embed_feats_30Hz = calculoB.extract_embedding_features(segs_raw, target_fs=30, n_components=64)
+    embed_feats_30Hz = calculoB.extract_embedding_features(segs_raw)
     print("Estas são as dimensões das features de embedding a 30HZ:", embed_feats_30Hz.shape)
     #==========================================================================
     #3. Data splitting strategy
@@ -94,7 +94,7 @@ def main():
     calculoB.calculate_metrics(y_test, test_predrelief)
     print("Métricas calculadas com sucesso!")
     datasets={
-        "Manual Features": (feats, lables),
+        "Manual Features": (feats_manual, lables_manual,parts_manual),
         "Embedding Features 30Hz": (embed_feats_30Hz, labels_seg,parts_seg)
     }
     #=========================================================================
