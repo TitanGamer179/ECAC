@@ -17,6 +17,17 @@ def plot_balance(labels, title="Distribuição de Classes"):
     plt.show()
 
 #1.3: Visualização de Exemplos Após Augmentação
+def plot_augmentation_scatter(original_data, synthetic_data):
+    plt.figure(figsize=(10, 7))
+    plt.scatter(original_data[:, 0], original_data[:, 1], c='blue', label='Original', alpha=0.6, s=50)
+    plt.scatter(synthetic_data[:, 0], synthetic_data[:, 1], c='red', marker='*', s=200, label='Sintético (SMOTE)')
+    plt.title("Data Augmentation: Part 3, Ativ 4 (2 Primeiras Features)")
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
 def generate_examples(features, labels, num_examples=5):
     unique_classes = np.unique(labels)
     plt.figure(figsize=(15, len(unique_classes) * 3))

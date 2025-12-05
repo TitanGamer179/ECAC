@@ -5,6 +5,7 @@ import openfile
 import graficoB
 import calculoB
 import calculo
+import numpy as np
 
 def main():
     datasets={}
@@ -33,69 +34,103 @@ def main():
     graficoB.plot_balance(lables_manual, title="Distribuição Original")
     #1.2 Create SMOTE
     print("Aplicando SMOTE para balanceamento dos dados...")
-    feats_aug, lables_aug = calculoB.apply_smote(feats_manual, lables_manual)
+    _, lables_aug = calculoB.apply_smote(feats_manual, lables_manual)
     calculoB.check_balance(lables_aug)
     graficoB.plot_balance(lables_aug, title="Distribuição Após SMOTE")
     #1.3 Visualização de Augmentação
     print("Visualizando dados após augmentação...")
-    graficoB.generate_examples(feats_aug, lables_aug)
+    mask_p3_a4 = (parts_manual == 3) & (lables_manual == 4)
+    if np.sum(mask_p3_a4) > 0:
+        feats_p3_a4 = feats_manual[mask_p3_a4]
+        lables_p3_a4 = lables_manual[mask_p3_a4]
+        synthetic_samples = calculoB.custom_smote(feats_p3_a4, lables_p3_a4, 4, N=3, k=2)
+        if len(synthetic_samples) > 0:
+            graficoB.plot_augmentation_scatter(feats_p3_a4, synthetic_samples)
+        else:
+            print("Não foi possível gerar amostras sintéticas (dados insuficientes).")
+    else:
+        print("Dados do Participante 3 / Atividade 4 não encontrados.")
+
     # =========================================================================
     # 2.Embedding features
     # =========================================================================
     print("Extraindo features de embedding...")
     #2.1 Extract embedding(30HZ)
-    print("Extraindo features de embedding a 30HZ...")
-    embed_feats_30Hz = calculoB.extract_embedding_features(segs_raw)
-    print("Estas são as dimensões das features de embedding a 30HZ:", embed_feats_30Hz.shape)
+    dataset_A=feats_manual
+    dataset_B=calculoB.extract_embedding_features(segs_raw)
     #==========================================================================
     #3. Data splitting strategy
     #==========================================================================
     print("Dividindo os dados em treino, validação e teste...")
     #3.1 TVT Split
     print("Dividindo os dados usando a estratégia TVT Split...")
-    train_idx, val_idx, test_idx = calculoB.tvt_split(embed_feats_30Hz, labels_seg)
-    X_train=embed_feats_30Hz[train_idx]
-    y_train=labels_seg[train_idx]
-    X_val=embed_feats_30Hz[val_idx]
-    y_val=labels_seg[val_idx]
-    X_test=embed_feats_30Hz[test_idx]
-    y_test=labels_seg[test_idx]
+    #Dataset B
+    train_idx_B, val_idx_B, test_idx_B = calculoB.tvt_split(dataset_B, labels_seg)
+    X_train_seg = dataset_B[train_idx_B]
+    y_train_seg = labels_seg[train_idx_B]
+    X_val_seg   = dataset_B[val_idx_B]
+    y_val_seg   = labels_seg[val_idx_B]
+    X_test_seg  = dataset_B[test_idx_B]
+    y_test_seg  = labels_seg[test_idx_B]
+    #Dataset A
+    train_idx_A, val_idx_A, test_idx_A = calculoB.tvt_split(dataset_A, lables_manual)
+    X_train_manual = dataset_A[train_idx_A]
+    y_train_manual = lables_manual[train_idx_A]
+    X_val_manual   = dataset_A[val_idx_A]
+    y_val_manual   = lables_manual[val_idx_A]
+    X_test_manual  = dataset_A[test_idx_A]
+    y_test_manual  = lables_manual[test_idx_A]
     print("Divisão concluída com sucesso!")
     #3.2 Subject Level Split
     print("Dividindo os dados usando a estratégia TVT Split por participante...")
-    train_idx, val_idx, test_idx = calculoB.split_between_subjects(parts_seg)
+    calculoB.split_between_subjects(parts_seg)
     #3.4 Method: "all";"pca";"relief"
     print("a)Usando método de seleção de features: All features")
-    X_train_all, X_val_all, X_test_all, scaler_all, _= calculoB.combined_split(X_train, y_train, X_val, X_test, method="all")
+    X_train_all_B, X_val_all_B, X_test_all_B, _, _ = calculoB.combined_split(X_train_seg, y_train_seg, X_val_seg, X_test_seg, method="all")
+    X_train_all_A, X_val_all_A, X_test_all_A, _, _ = calculoB.combined_split(X_train_manual, y_train_manual, X_val_manual, X_test_manual, method="all")
     print("b)Usando método de seleção de features: pca features")
-    X_train_pca, X_val_pca, X_test_pca, scaler_pca, pca_model = calculoB.combined_split(X_train, y_train, X_val, X_test, method="pca")
+    X_train_pca_B, X_val_pca_B, X_test_pca_B, _, _ = calculoB.combined_split(X_train_seg, y_train_seg, X_val_seg, X_test_seg, method="pca")
+    X_train_pca_A, X_val_pca_A, X_test_pca_A, _, _ = calculoB.combined_split(X_train_manual, y_train_manual, X_val_manual, X_test_manual, method="pca")
     print("c)Usando método de seleção de features: relief features")
-    X_train_relief, X_val_relief, X_test_relief, scaler_relief, selector_relief = calculoB.combined_split(X_train, y_train, X_val, X_test, method="relief")
+    X_train_rel_B, X_val_rel_B, X_test_rel_B, _, _ = calculoB.combined_split(X_train_seg, y_train_seg, X_val_seg, X_test_seg, method="relief")
+    X_train_rel_A, X_val_rel_A, X_test_rel_A, _, _ = calculoB.combined_split(X_train_manual, y_train_manual, X_val_manual, X_test_manual, method="relief")
     print("Seleção de features concluída com sucesso!")
     #==========================================================================
     #4. Model learning
     #==========================================================================
-    print("Iniciando o treinamento do modelo...")
-    k_value=3
-    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando todas as features:")
-    knall, test_predall = calculoB.train_evaluate_knn(X_train_all, y_train, X_val_all, y_val, X_test_all, y_test, k_value)
-    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando features PCA:")
-    knpca, test_predpca = calculoB.train_evaluate_knn(X_train_pca, y_train, X_val_pca, y_val, X_test_pca, y_test, k_value)
-    print(f"\nTreinando e avaliando o modelo k-NN com k={k_value} usando features Relief:")
-    knrelief, test_predrelief = calculoB.train_evaluate_knn(X_train_relief, y_train, X_val_relief, y_val, X_test_relief, y_test, k_value)
-    print("Treinamento e avaliação do modelo concluídos!")
-    #4.2 Avaliação do Modelo metricas
-    print("Calculando métricas de avaliação do modelo...")
-    print("\n--- Métricas All Features ---")
-    calculoB.calculate_metrics(y_test, test_predall)
-    print("\n--- Métricas PCA Features ---")
-    calculoB.calculate_metrics(y_test, test_predpca)
-    print("\n--- Métricas Relief Features ---")
-    calculoB.calculate_metrics(y_test, test_predrelief)
-    print("Métricas calculadas com sucesso!")
-    datasets={
-        "Manual Features": (feats_manual, lables_manual,parts_manual),
-        "Embedding Features 30Hz": (embed_feats_30Hz, labels_seg,parts_seg)
+    print("\n=== 4. MODEL LEARNING (Exemplo Dataset B) ===")
+    k_value = 3
+    print(f"Treinando k-NN (k={k_value}) - All Features...")
+    _, preds_all = calculoB.train_evaluate_knn(X_train_all_B, y_train_seg, X_val_all_B, y_val_seg, X_test_all_B, y_test_seg, k_value)
+    print(f"Treinando k-NN (k={k_value}) - PCA...")
+    _, preds_pca = calculoB.train_evaluate_knn(X_train_pca_B, y_train_seg, X_val_pca_B, y_val_seg, X_test_pca_B, y_test_seg, k_value)
+    print(f"Treinando k-NN (k={k_value}) - ReliefF...")
+    _, preds_rel = calculoB.train_evaluate_knn(X_train_rel_B, y_train_seg, X_val_rel_B, y_val_seg, X_test_rel_B, y_test_seg, k_value)
+    # 4.2 Métricas
+    print("\n=== MÉTRICAS (Dataset B) ===")
+    print("--- All Features ---")
+    calculoB.calculate_metrics(y_test_seg, preds_all)
+    print("\n--- PCA ---")
+    calculoB.calculate_metrics(y_test_seg, preds_pca)
+    print("\n--- ReliefF ---")
+    calculoB.calculate_metrics(y_test_seg, preds_rel)
+    dataset={
+        "Dataset_A": {
+            "X_train": X_train_manual,
+            "y_train": y_train_manual,
+            "X_val": X_val_manual,
+            "y_val": y_val_manual,
+            "X_test": X_test_manual,
+            "y_test": y_test_manual
+        },
+        "Dataset_B": {
+            "X_train": X_train_seg,
+            "y_train": y_train_seg,
+            "X_val": X_val_seg,
+            "y_val": y_val_seg,
+            "X_test": X_test_seg,
+            "y_test": y_test_seg
+        }
     }
     #=========================================================================
     #5. Evaluation
