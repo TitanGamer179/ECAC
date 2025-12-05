@@ -7,6 +7,8 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import random
 import calculo
+import torch
+import embeddings_extractor
 
 # Requisito 1.1: Análise do Balanço de Classes
 def check_balance(labels):
@@ -60,22 +62,25 @@ def apply_smote(features, labels):
 
 # Requesito 2.1: Extração de Features de Embedding
 def extract_embedding_features(features,target_fs=30,n_components=64):
-    embedded_features = []
-    target_sample=int(5*target_fs)
-    for feat in features:
-        acc_dados=feat[:,:3]
-        if len(acc_dados)>0:
-            seg_resized=resample(acc_dados,target_sample)
-        else:
-            seg_resized=np.zeros((target_sample,3))
-        embedded_features.append(seg_resized.flatten())
-    matrix=np.array(embedded_features)
-    scaler = StandardScaler()
-    matrix_scaled = scaler.fit_transform(matrix)
-    n_components = min(n_components, matrix_scaled.shape[1], matrix_scaled.shape[0])
-    pca = PCA(n_components=n_components)
-    embedding = pca.fit_transform(matrix_scaled)
-    return embedding
+    print("Carregando modelo Harnet5...")
+    feature_encoder = embeddings_extractor.load_model()
+    processed_features = []
+    fs_original = 51.5
+    for segment in features:
+        acc_xyz=segment[:,1:4]
+        acc_resampled, _ = embeddings_extractor.resample_to_30hz_5s(acc_xyz, fs_original)
+        processed_features.append(acc_resampled)
+    x_all = np.transpose(np.array(processed_features), (0, 2, 1))
+    embeddings_list=[]
+    batch_size = 32
+    with torch.no_grad():
+        for i in range(0, x_all.shape[0], batch_size):
+            batch = x_all[i:i+batch_size]
+            batch_tensor = torch.tensor(batch, dtype=torch.float32)
+            embeddings = feature_encoder(batch_tensor).numpy()
+            embeddings_list.append(embeddings.cpu().numpy())
+    final_embeddings=np.concatenate(embeddings_list, axis=0)
+    return final_embeddings
 
 # Requisito 3.1: TVT Split 60-20-20 por Participante
 def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2):

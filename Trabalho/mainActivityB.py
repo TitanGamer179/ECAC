@@ -1,6 +1,5 @@
 #Meta 2 do Projeto
 
-import numpy as np
 import os
 import openfile
 import graficoB
