@@ -19,7 +19,7 @@ def main():
         return
     print("Ficheiros abertos com sucesso!")
     #all_data=calculo.add_magnitude(all_data)
-    all_data=all_data[all_data[:, -1] <= 7] 
+    all_data=all_data[all_data[:, 11] <= 7] 
     print("Dados filtrados com sucesso!")
     feats,lables,_=calculo.extrair_features(all_data)
     segs_raw, labels_seg, parts_seg = calculo.segmentation(all_data)
