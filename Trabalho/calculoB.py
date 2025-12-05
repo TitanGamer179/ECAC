@@ -77,7 +77,7 @@ def extract_embedding_features(features,target_fs=30,n_components=64):
     return embedding
 
 # Requisito 3.1: TVT Split 60-20-20 por Participante
-def tvt_split(features, labels, parts, train_ratio=0.6, val_ratio=0.2):
+def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2):
     test=StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     train_val_idx, test_idx = next(test.split(features, labels))
     x_train_val=features[train_val_idx]
@@ -95,7 +95,7 @@ def tvt_split(features, labels, parts, train_ratio=0.6, val_ratio=0.2):
     return final_train_idx, final_val_idx, test_idx
 
 # Requisito 3.2: TVT Split por Participante
-def split_between_subjects(features, labels, parts):
+def split_between_subjects(parts):
     unique_parts = np.unique(parts)
     if(len(unique_parts)<15):
         raise ValueError("Número insuficiente de participantes para divisão entre sujeitos.")
@@ -129,7 +129,7 @@ def combined_split(x_train, y_train, x_val,x_test, method):
         x_test_pca=pca.transform(x_test_norm)
         return x_train_pca, x_val_pca, x_test_pca,scaler,scaler,pca
     elif method == "relief":
-        weights,ranking=calculo.reliefF(x_train_norm,y_train,n_neighbors=10)
+        _,ranking=calculo.reliefF(x_train_norm,y_train,n_neighbors=10)
         top_15_idx=ranking[:15]
         x_train_relief=x_train_norm[:,top_15_idx]
         x_val_relief=x_val_norm[:,top_15_idx]
