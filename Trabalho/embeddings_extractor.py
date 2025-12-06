@@ -73,7 +73,9 @@ def acc_segmentation(data):
 
 
 # load example file to test embedding
-csv_file_path = 'C:\\Users\\User\\OneDrive - Universidade de Coimbra\\Ambiente de Trabalho\\Aulas\\ECAC\\ECAC\\Trabalho\\diretoria\\part13\\part13dev1.csv'
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+csv_file_path = os.path.join(script_dir, 'diretoria', 'part13', 'part13dev1.csv')
 csv_data = np.loadtxt(csv_file_path, delimiter=',')
 
 original_segments, activities = acc_segmentation(csv_data)

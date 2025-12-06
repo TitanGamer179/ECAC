@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from scipy.signal import resample
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -181,3 +183,61 @@ def calculate_metrics(y_true, y_pred):
     print(f"F1-Score: {f1:.4f}")
     print("Matriz de Confusão:")
     print(conf_matrix)
+    
+# Requisito 5.1: Hyperparameter tuning
+
+def hyperparameter_tuning(X_train, y_train, X_val, y_val, X_test, y_test, k_range=None):
+    
+    #encontrarmos o melhor k com train and validation data
+    if k_range is None:
+        k_range = list(range(1, 21))
+        
+    best_val_k= None
+    best_val_acc=0
+    val_accuracy=[]
+    for k in k_range:
+        knn= KNeighborsClassifier(n_neighbors=k)
+        knn.fit(X_train, y_train)
+        y_val_preds= knn.predict(X_val)
+        val_acc= accuracy_score(y_val, y_val_preds)
+        val_accuracy.append(val_acc)
+
+        if val_acc > best_val_acc:
+            best_val_acc= val_acc
+            best_val_k= k
+            
+        if k%5==1 or k==best_val_k:
+            print(f"k={k}: Accuracy na Validação = {val_acc:.4f}")
+        
+    print(f"Melhor k na Validação: {best_val_k} com Accuracy = {best_val_acc:.4f}")
+    
+    #retreinar o dataset com este k
+    
+    X_train_val= np.vstack((X_train, X_val))
+    y_train_val= np.hstack((y_train, y_val))
+    
+    best_model= KNeighborsClassifier(n_neighbors=best_val_k)
+    best_model.fit(X_train_val, y_train_val)
+    print("Modelo retreinado com os dados de Treino + Validação.")
+    
+    #avaliação final com os dataset treinados
+    
+    y_test_preds= best_model.predict(X_test)
+    test_metrics= {
+        "accuracy": accuracy_score(y_test, y_test_preds), 
+        "precision": precision_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "recall": recall_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "f1_score": f1_score(y_test, y_test_preds, average='weighted',),
+        "confusion_matrix": confusion_matrix(y_test, y_test_preds)}
+    
+    print(f"Accuracy no Teste com k={best_val_k}: {test_metrics['accuracy']:.4f}")
+    print(f"F1-Score no Teste com k={best_val_k}: {test_metrics['f1_score']:.4f}")
+    return best_val_k, test_metrics, val_accuracy, best_model,y_test_preds
+    
+        
+# Requisito 5.2: Report and analysis of results
+
+def report_results(datasets_dict, participants_None, n_iterations=0):
+    results= {}
+    predict={}
+    
