@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from scipy import stats
 import random
 import calculo
 import torch
@@ -86,9 +87,10 @@ def extract_embedding_features(features):
         final_embeddings=final_embeddings.reshape(final_embeddings.shape[0], -1)
     return final_embeddings
 
-# Requisito 3.1: TVT Split 60-20-20 por Participante
-def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2):
-    test=StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+# Requisito 3.1: TVT Split 60-20-20 Estratificado
+def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+    """Split estratificado que mantém as proporções das classes em cada subset."""
+    test=StratifiedShuffleSplit(n_splits=1, test_size=test_ratio, random_state=42)
     train_val_idx, test_idx = next(test.split(features, labels))
     x_train_val=features[train_val_idx]
     y_train_val=labels[train_val_idx]
@@ -104,18 +106,21 @@ def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2):
     print(f"  Teste:  {len(test_idx)} ({len(test_idx)/n_total:.1%}) -> Esperado 20%")
     return final_train_idx, final_val_idx, test_idx
 
-# Requisito 3.2: TVT Split por Participante
+# Requisito 3.2: TVT Split por Participante (Dinâmico para qualquer número)
 def split_between_subjects(parts):
     unique_parts = np.unique(parts)
     np.random.seed(42)
     shuffled_parts = np.random.permutation(unique_parts)
-    train_p_ids=shuffled_parts[:9]
-    val_p_ids=shuffled_parts[9:12]
-    test_p_ids=shuffled_parts[12:]
-    print(f"Participantes atribuídos:")
-    print(f"  Treino: {train_p_ids}")
-    print(f"  Validação: {val_p_ids}")
-    print(f"  Teste: {test_p_ids}")
+    n_parts = len(unique_parts)
+    train_size = int(0.6 * n_parts)
+    val_size = int(0.2 * n_parts)
+    train_p_ids = shuffled_parts[:train_size]
+    val_p_ids = shuffled_parts[train_size:train_size+val_size]
+    test_p_ids = shuffled_parts[train_size+val_size:]
+    print(f"Participantes atribuídos (60-20-20 dinâmico):")
+    print(f"  Treino: {train_p_ids} ({len(train_p_ids)}/{n_parts})")
+    print(f"  Validação: {val_p_ids} ({len(val_p_ids)}/{n_parts})")
+    print(f"  Teste: {test_p_ids} ({len(test_p_ids)}/{n_parts})")
     train_idx = np.where(np.isin(parts, train_p_ids))[0]
     val_idx = np.where(np.isin(parts, val_p_ids))[0]
     test_idx = np.where(np.isin(parts, test_p_ids))[0]
@@ -237,7 +242,404 @@ def hyperparameter_tuning(X_train, y_train, X_val, y_val, X_test, y_test, k_rang
         
 # Requisito 5.2: Report and analysis of results
 
-def report_results(datasets_dict, participants_None, n_iterations=0):
+def report_results(datasets_dict, participants=None, n_iterations=1):
     results= {}
     predict={}
+
+    dataset_names =['Dataset_A', 'Dataset_B']
+    methods= ['all', 'pca', 'relief']
+    splitting = ['Within-Subject', 'Between-Subject']
     
+    for dataset_name in dataset_names: 
+        dataset = datasets_dict[dataset_name]
+        x_all=np.vstack((dataset['X_train'], dataset['X_val'], dataset['X_test']))
+        y_all=np.hstack((dataset['y_train'], dataset['y_val'], dataset['y_test']))
+        
+        for method in methods:
+            for split_strategy in splitting:
+                config_name= f"{dataset_name}_{method}_{split_strategy}"
+                print(f"\nExecutando configuração: {config_name}")
+                
+                accuracies= []
+                all_metrics= []
+                
+                for iter in range(n_iterations):
+                    if split_strategy == 'Within-Subject':
+                        train_idx, val_idx, test_idx = tvt_split(x_all, y_all)
+                    else:
+                        if participants is None:
+                            print("Erro: participantes não fornecidos para split Between-Subject.")
+                            continue
+                        train_idx, val_idx, test_idx = split_between_subjects(participants)
+                    
+                    
+                    X_train= x_all[train_idx]
+                    y_train= y_all[train_idx]
+                    X_val= x_all[val_idx]
+                    y_val= y_all[val_idx]
+                    X_test= x_all[test_idx]
+                    y_test= y_all[test_idx]
+                    
+                    X_train_fs, X_val_fs, X_test_fs, scaler, selector = combined_split(X_train, y_train, X_val, X_test, method)
+                    
+                    best_k, test_metrics, val_accuracy,best_model,y_test_preds = hyperparameter_tuning(X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test)
+                    
+                    accuracies.append(test_metrics['accuracy'])
+                    all_metrics.append(test_metrics)
+                    
+                    if iter ==0:
+                        predict[config_name]= {'y_true': y_test, 'y_pred': y_test_preds, 'best_k': best_k}
+                
+                if accuracies: 
+                    results[config_name]={ 'accuracies': accuracies,'mean_acc': np.mean(accuracies), 'std_acc': np.std(accuracies), 'metrics': all_metrics}
+                    print(f"Configuração {config_name} - Acurácia Média: {np.mean(accuracies):.4f}, Desvio Padrão: {np.std(accuracies):.4f}")
+                else:
+                    print(f"Nenhum resultado obtido para a configuração {config_name}.")
+                                    
+    sorted_results= sorted(results.items(), key=lambda item: item[1]['mean_acc'], reverse=True)
+    print("\n=== Resultados Finais Ordenados por Acurácia Média ===")
+    for rank, (name,metrics) in enumerate(sorted_results,1):
+        print(f"{rank}. {name} - Acurácia Média: {metrics['mean_acc']:.4f}, Desvio Padrão: {metrics['std_acc']:.4f}")
+    return results, predict
+
+# Requisito 5.3: Hypothesis Testing
+def analyze_results_5_3(results, predictions):
+    
+    results_by_dataset = {}
+    results_by_method = {}
+    results_by_strategy = {}
+    
+    for config_name, metrics in results.items():
+        parts = config_name.split('_')
+        dataset = parts[0] + '_' + parts[1]  # Dataset_A ou Dataset_B
+        method = parts[2]  # all, pca, relief
+        strategy = '_'.join(parts[3:])  # Within-Subject ou Between-Subject
+        
+        mean_acc = metrics['mean_acc']
+        std_acc = metrics['std_acc']
+        
+        # Agrupar por dataset
+        if dataset not in results_by_dataset:
+            results_by_dataset[dataset] = []
+        results_by_dataset[dataset].append((config_name, mean_acc, std_acc))
+        
+        # Agrupar por método
+        if method not in results_by_method:
+            results_by_method[method] = []
+        results_by_method[method].append((config_name, mean_acc, std_acc))
+        
+        # Agrupar por estratégia
+        if strategy not in results_by_strategy:
+            results_by_strategy[strategy] = []
+        results_by_strategy[strategy].append((config_name, mean_acc, std_acc))
+    
+    print("\n1. Comparação por Dataset:")
+    for dataset, confs in results_by_dataset.items():
+        accs = [acc for _, acc, _ in confs]
+        print(f"  {dataset}: Média = {np.mean(accs):.4f}, Min = {np.min(accs):.4f}, Max = {np.max(accs):.4f}")
+    
+    print("\n2. Comparação por Método de Seleção de Features:")
+    for method, confs in results_by_method.items():
+        accs = [acc for _, acc, _ in confs]
+        print(f"  {method:10s}: Média = {np.mean(accs):.4f}, Min = {np.min(accs):.4f}, Max = {np.max(accs):.4f}")
+    
+    print("\n3.Comparação por Estratégia de Split")
+    for strategy, confs in results_by_strategy.items():
+        accs = [acc for _, acc, _ in confs]
+        print(f"  {strategy:20s}: Média = {np.mean(accs):.4f}, Min = {np.min(accs):.4f}, Max = {np.max(accs):.4f}")
+    
+    print("\n4. Melhor e Pior Configuração")
+    sorted_configs = sorted(results.items(), key=lambda x: x[1]['mean_acc'], reverse=True)
+
+    print("\n5. Análise de robustez (desvio padrão):")
+    std_values = [m['std_acc'] for m in results.values()]
+    print(f"  Desvio padrão médio: {np.mean(std_values):.4f}")
+    print(f"  Configuração mais estável: {min(results.items(), key=lambda x: x[1]['std_acc'])[0]}")
+    print(f"  Configuração menos estável: {max(results.items(), key=lambda x: x[1]['std_acc'])[0]}")
+    
+
+    print("\n6. Teste de Friedman")
+
+    print("\n  Hipótese Nula (H0): Todas as configurações têm desempenho similar")
+    print("  Hipótese Alternativa (H1): Pelo menos uma configuração difere significativamente")
+    print("  Nível de significância: α = 0.05")
+    
+    # Preparar dados para o teste de Friedman
+    config_names_list = list(results.keys())
+    accuracies_data = []
+    
+    for config_name in config_names_list:
+        if 'accuracies' in results[config_name]:
+            accs = results[config_name]['accuracies']
+        else:
+            accs = [results[config_name]['mean_acc']]
+        accuracies_data.append(accs)
+    
+    # Garantir mesmo tamanho de amostras (necessário para Friedman)
+    min_samples = min(len(accs) for accs in accuracies_data)
+    accuracies_data = [accs[:min_samples] for accs in accuracies_data]
+    
+    # Transpor para formato correto (linhas = iterações, colunas = configurações)
+    accuracies_matrix = np.array(accuracies_data).T
+    
+    # Executar teste de Friedman
+    friedman_stat, friedman_p = stats.friedmanchisquare(*accuracies_data)
+    
+    print(f"\n  Estatística de Friedman: {friedman_stat:.4f}")
+    print(f"  p-value: {friedman_p:.6f}")
+    
+    if friedman_p < 0.05:
+        print(f"  ✓ RESULTADO: Diferenças SIGNIFICATIVAS (p < 0.05)")
+        print(f"    → Rejeitar H0: Há diferenças significativas entre configurações")
+        print(f"    → Usar Teste T Pareado (seção 8) para identificar pares específicos")
+    else:
+        print(f"  ✗ RESULTADO: Diferenças NÃO significativas (p ≥ 0.05)")
+        print(f"    → Não rejeitar H0: Configurações não diferem significativamente")
+    
+    # Calcular rankings de Friedman (média dos ranks)
+    print("\n  Rankings de Friedman (por configuração):")
+    
+    # Ranquear cada iteração
+    ranks_all = []
+    for row in accuracies_matrix:
+        ranks = stats.rankdata(row)
+        ranks_all.append(ranks)
+    
+    # Média dos rankings
+    mean_ranks = np.mean(ranks_all, axis=0)
+    
+    # Criar lista com nomes e ranks
+    ranked_configs = list(zip(config_names_list, mean_ranks))
+    ranked_configs.sort(key=lambda x: x[1])  # Ordenar por rank (menor é melhor)
+    
+    for i, (config_name, mean_rank) in enumerate(ranked_configs, 1):
+        mean_acc = results[config_name]['mean_acc']
+        print(f"    {i}. {config_name:40s} | Rank: {mean_rank:5.2f} | Acurácia: {mean_acc:.4f}")
+    
+    # 7. Conclusões
+    print("\n7. Conclusão:")
+    best_config, best_metrics = sorted_configs[0]
+    worst_config, worst_metrics = sorted_configs[-1]
+    
+    print(f"   Melhor configuração: {best_config}")
+    print(f"    Accuracy: {best_metrics['mean_acc']:.4f} (±{best_metrics['std_acc']:.4f})")
+    print(f"    Precision: {best_metrics['metrics'][0]['precision']:.4f}")
+    print(f"    Recall: {best_metrics['metrics'][0]['recall']:.4f}")
+    print(f"    F1-Score: {best_metrics['metrics'][0]['f1_score']:.4f}")
+    
+    print(f"\n  Pior configuração: {worst_config}")
+    print(f"    Accuracy: {worst_metrics['mean_acc']:.4f} (±{worst_metrics['std_acc']:.4f})")
+    
+    gap = best_metrics['mean_acc'] - worst_metrics['mean_acc']
+    print(f"\n Diferença entre melhor e pior: {gap:.4f} ({gap*100:.2f}%)")
+    
+    print(f"\n Teste de Friedman:")
+    if friedman_p < 0.05:
+        print(f"    • Diferenças globais SIGNIFICATIVAS (p = {friedman_p:.6f})")
+        print(f"    • Há diferenças significativas entre as configurações")
+    else:
+        print(f"    • Diferenças globais NÃO significativas (p = {friedman_p:.6f})")
+        print(f"    • Todas as configurações têm desempenho estatisticamente similar")
+ 
+    print("\n7.1. Utilizando predictions")
+    if predictions:
+        for config_name in sorted(predictions.keys()):
+            pred_data = predictions[config_name]
+            y_true = pred_data['y_true']
+            y_pred = pred_data['y_pred']
+            
+            # Calcular métricas das predições
+            acc = accuracy_score(y_true, y_pred)
+            conf_mat = confusion_matrix(y_true, y_pred)
+            
+            print(f"\n  {config_name}:")
+            print(f"    Acurácia: {acc:.4f}")
+            print(f"    Matriz de confusão shape: {conf_mat.shape}")
+            print(f"    Verdadeiros Positivos: {np.trace(conf_mat)}")
+    else:
+        print("  Nenhuma predição disponível para análise")
+    
+
+    print("\n8. Teste T de Student Pareado")
+    print("\nHipótese Nula (H0): Não há diferença significativa de acurácia entre pares")
+    print("Hipótese Alternativa (H1): Há diferença significativa")
+    print("Nível de Significância: α = 0.05")
+    
+    # Extrair acurácias de cada configuração
+    config_names_list = list(results.keys())
+    accuracies_dict = {}
+    
+    for config_name in config_names_list:
+        # Se há múltiplas iterações, usar a lista de acurácias
+        if 'accuracies' in results[config_name]:
+            accuracies_dict[config_name] = results[config_name]['accuracies']
+        else:
+            # Fallback: usar apenas a acurácia média
+            accuracies_dict[config_name] = [results[config_name]['mean_acc']]
+    
+    # Comparações principais
+    print("\n8.1. Comparação entre as datasets")
+    print("-" * 80)
+    
+    # Dataset_A vs Dataset_B (mesmo método e estratégia)
+    dataset_pairs = []
+    for method in ['all', 'pca', 'relief']:
+        for strategy in ['Within-Subject', 'Between-Subject']:
+            config_a = f"Dataset_A_{method}_{strategy}"
+            config_b = f"Dataset_B_{method}_{strategy}"
+            
+            if config_a in accuracies_dict and config_b in accuracies_dict:
+                accs_a = np.array(accuracies_dict[config_a])
+                accs_b = np.array(accuracies_dict[config_b])
+                
+                # Garantir mesmo tamanho para teste pareado
+                min_len = min(len(accs_a), len(accs_b))
+                accs_a = accs_a[:min_len]
+                accs_b = accs_b[:min_len]
+                
+                # Teste T de Student pareado
+                t_stat, p_value = stats.ttest_rel(accs_a, accs_b)
+                mean_diff = np.mean(accs_a) - np.mean(accs_b)
+                
+                dataset_pairs.append({
+                    'comparison': f"{config_a} vs {config_b}",
+                    't_stat': t_stat,
+                    'p_value': p_value,
+                    'mean_diff': mean_diff,
+                    'significant': p_value < 0.05
+                })
+                
+                sig_marker = "✓ SIG" if p_value < 0.05 else "✗ NS"
+                better_config = config_a if mean_diff > 0 else config_b
+                print(f"\n  {config_a} vs {config_b}")
+                print(f"    t-statistic: {t_stat:8.4f}")
+                print(f"    p-value:     {p_value:8.6f} {sig_marker}")
+                print(f"    Diferença:   {mean_diff:8.4f}")
+                if p_value < 0.05:
+                    print(f"    ✓ {better_config} é SIGNIFICATIVAMENTE melhor")
+    
+    print("\n8.2.Comparação entre os métodos")
+    
+    # Para cada dataset e estratégia, comparar métodos
+    method_pairs = []
+    for dataset in ['Dataset_A', 'Dataset_B']:
+        for strategy in ['Within-Subject', 'Between-Subject']:
+            methods = ['all', 'pca', 'relief']
+            
+            for i in range(len(methods)):
+                for j in range(i+1, len(methods)):
+                    config_i = f"{dataset}_{methods[i]}_{strategy}"
+                    config_j = f"{dataset}_{methods[j]}_{strategy}"
+                    
+                    if config_i in accuracies_dict and config_j in accuracies_dict:
+                        accs_i = np.array(accuracies_dict[config_i])
+                        accs_j = np.array(accuracies_dict[config_j])
+                        
+                        # Garantir mesmo tamanho
+                        min_len = min(len(accs_i), len(accs_j))
+                        accs_i = accs_i[:min_len]
+                        accs_j = accs_j[:min_len]
+                        
+                        # Teste T de Student pareado
+                        t_stat, p_value = stats.ttest_rel(accs_i, accs_j)
+                        mean_diff = np.mean(accs_i) - np.mean(accs_j)
+                        
+                        method_pairs.append({
+                            'comparison': f"{methods[i]} vs {methods[j]} ({dataset}, {strategy})",
+                            't_stat': t_stat,
+                            'p_value': p_value,
+                            'mean_diff': mean_diff,
+                            'significant': p_value < 0.05
+                        })
+                        
+                        sig_marker = "✓ SIG" if p_value < 0.05 else "✗ NS"
+                        better_config = config_i if mean_diff > 0 else config_j
+                        print(f"\n  {config_i} vs {config_j}")
+                        print(f"    t-statistic: {t_stat:8.4f}")
+                        print(f"    p-value:     {p_value:8.6f} {sig_marker}")
+                        print(f"    Diferença:   {mean_diff:8.4f}")
+                        if p_value < 0.05:
+                            print(f"    ✓ {better_config.split('_')[1]} é SIGNIFICATIVAMENTE melhor")
+    
+    print("\n8.3.Comparação entre estratégiass") 
+    # Para cada dataset e método, comparar estratégias
+    strategy_pairs = []
+    for dataset in ['Dataset_A', 'Dataset_B']:
+        for method in ['all', 'pca', 'relief']:
+            config_within = f"{dataset}_{method}_Within-Subject"
+            config_between = f"{dataset}_{method}_Between-Subject"
+            
+            if config_within in accuracies_dict and config_between in accuracies_dict:
+                accs_within = np.array(accuracies_dict[config_within])
+                accs_between = np.array(accuracies_dict[config_between])
+                
+                # Garantir mesmo tamanho
+                min_len = min(len(accs_within), len(accs_between))
+                accs_within = accs_within[:min_len]
+                accs_between = accs_between[:min_len]
+                
+                # Teste T de Student pareado
+                t_stat, p_value = stats.ttest_rel(accs_within, accs_between)
+                mean_diff = np.mean(accs_within) - np.mean(accs_between)
+                
+                strategy_pairs.append({
+                    'comparison': f"Within vs Between ({dataset}, {method})",
+                    't_stat': t_stat,
+                    'p_value': p_value,
+                    'mean_diff': mean_diff,
+                    'significant': p_value < 0.05
+                })
+                
+                sig_marker = "✓ SIG" if p_value < 0.05 else "✗ NS"
+                better_config = "Within-Subject" if mean_diff > 0 else "Between-Subject"
+                print(f"\n  {config_within} vs {config_between}")
+                print(f"    t-statistic: {t_stat:8.4f}")
+                print(f"    p-value:     {p_value:8.6f} {sig_marker}")
+                print(f"    Diferença:   {mean_diff:8.4f}")
+                if p_value < 0.05:
+                    print(f"    ✓ {better_config} é SIGNIFICATIVAMENTE melhor")
+    
+    print("\n8.4.Resumo das estatísticas")
+    print("-" * 80)
+    
+    all_pairs = dataset_pairs + method_pairs + strategy_pairs
+    sig_count = sum(1 for p in all_pairs if p['significant'])
+    total_count = len(all_pairs)
+    
+    print(f"\n  Total de comparações pareadas: {total_count}")
+    print(f"  Comparações significativas (p < 0.05): {sig_count}")
+    print(f"  Comparações não significativas: {total_count - sig_count}")
+    
+    print("\n  Comparações significativas")
+    print("  " + "-" * 76)
+    sig_pairs = [p for p in all_pairs if p['significant']]
+    if sig_pairs:
+        for pair in sorted(sig_pairs, key=lambda x: x['p_value']):
+            print(f"    {pair['comparison']:<50} p={pair['p_value']:.6f}, t={pair['t_stat']:7.4f}, diff={pair['mean_diff']:7.4f}")
+    else:
+        print("Nenhuma diferença significativa encontrada")
+    
+    print("\n8.5. INTERPRETAÇÃO:")
+    print("-" * 80)
+    print("\n  • p-value < 0.05: Diferença SIGNIFICATIVA (rejeitar H0)")
+    print("  • p-value ≥ 0.05: Diferença NÃO significativa (não rejeitar H0)")
+    print("\n  • t-statistic > 0: Primeira config tem acurácia maior")
+    print("  • t-statistic < 0: Segunda config tem acurácia maior")
+    print("  • |t-statistic| maior → diferença mais significativa")
+    
+    print("\n8.6. NOTA IMPORTANTE SOBRE ROBUSTEZ ESTATÍSTICA:")
+    print("-" * 80)
+    n_iterations = len(accuracies_data[0]) if accuracies_data else 1
+    print(f"\n  Número de iterações utilizadas: {n_iterations}")
+    if n_iterations < 5:
+        print(f"  ⚠️  AVISO: {n_iterations} iteração(ões) é/são INSUFICIENTE(es)")
+        print(f"     Recomendação: Usar mínimo 5-10 iterações para testes estatísticos válidos")
+        print(f"     Idealmente: 20-30 iterações para máxima robustez")
+    elif n_iterations < 20:
+        print(f"  ⚠️  AVISO: {n_iterations} iterações é aceitável mas pode ter variância elevada")
+        print(f"     Recomendação: Considerar aumentar para 20-30 iterações")
+    else:
+        print(f"  ✓ {n_iterations} iterações - Robustez estatística ADEQUADA")
+    
+    print("\n" + "="*80)
+# Requisito 5.3: Hypothesis testing (completo com Friedman e Student Pareado)

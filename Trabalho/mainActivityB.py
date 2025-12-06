@@ -133,8 +133,26 @@ def main():
         }
     }
     #=========================================================================
-    #5. Evaluation
+    #5. Evaluation - Report Results
     #=========================================================================
+    print("\n" + "="*80)
+    print("INICIANDO AVALIAÇÃO COMPLETA (REPORT RESULTS)...")
+    print("Com múltiplas iterações para análise estatística robusta")
+    print("="*80)
+    results, predictions = calculoB.report_results(
+        dataset, 
+        participants=parts_seg, 
+        n_iterations=30  # ✅ AUMENTADO: 30 iterações para robustez estatística
+    )
+    print("\nAvaliação concluída com sucesso!")
+    
+    # 5.3 - Análise Comparativa dos Resultados (com Teste de Friedman e Student Pareado)
+    print("\n" + "="*80)
+    print("INICIANDO ANÁLISE COMPARATIVA (REQUISITO 5.3)...")
+    print("Inclui: Teste de Friedman + Teste T de Student Pareado")
+    print("="*80)
+    calculoB.analyze_results_5_3(results, predictions)
+    
     #=========================================================================
     #6. Deployment
     #=========================================================================
@@ -145,4 +163,4 @@ def main():
     
 
 if __name__ == "__main__":
-    main()
+    main() 

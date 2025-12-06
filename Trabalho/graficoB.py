@@ -46,3 +46,41 @@ def generate_examples(features, labels, num_examples=5):
                     plt.title(f'Exemplo {j+1}', fontsize=12)
     plt.tight_layout()
     plt.show()
+
+def plot_confusion_matrix(y_true, y_pred, title="Matriz de Confusão"):
+    """Visualizar matriz de confusão."""
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title(title, fontsize=14)
+    plt.colorbar()
+    classes = sorted(np.unique(y_true))
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes)
+    plt.yticks(tick_marks, classes)
+    plt.ylabel('Verdadeira', fontsize=12)
+    plt.xlabel('Predita', fontsize=12)
+    
+    # Adicionar valores na matriz
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, format(cm[i, j], 'd'), ha="center", va="center",
+                    color="white" if cm[i, j] > cm.max() / 2 else "black")
+    plt.tight_layout()
+    plt.show()
+
+def plot_feature_importance(importance, feature_names=None, top_n=15, title="Importância de Features"):
+    """Visualizar importância das features (ReliefF ou PCA)."""
+    if feature_names is None:
+        feature_names = [f"F{i}" for i in range(len(importance))]
+    
+    sorted_idx = np.argsort(importance)[::-1][:top_n]
+    plt.figure(figsize=(10, 6))
+    plt.barh(range(top_n), importance[sorted_idx])
+    plt.yticks(range(top_n), [feature_names[i] for i in sorted_idx])
+    plt.xlabel('Importância')
+    plt.title(title)
+    plt.gca().invert_yaxis()
+    plt.tight_layout()
+    plt.show()
