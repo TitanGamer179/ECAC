@@ -139,6 +139,7 @@ def main():
     #5. Evaluation - Report Results
     #==========================================================================
     print("Avaliação completa da questão 5:")
+    #5.2- Report Results
     results, predictions = calculoB.report_results(
         dataset, 
         participants=parts_seg, 
