@@ -76,8 +76,10 @@ def identificar_outliers_kmeans(labels, min_size_percent=1.0):
 
 def aplicar_dbscan(data_3d, eps=0.5, min_samples=15):
     print(f"A aplicar o DBSCAN com eps={eps} e min_samples={min_samples}...")
+    scaler=StandardScaler()
+    data_normalized= scaler.fit_transform(data_3d)
     db = DBSCAN(eps=eps, min_samples=min_samples)
-    labels = db.fit_predict(data_3d)
+    labels = db.fit_predict(data_normalized)
     is_outlier_mask = (labels == -1)
     print("DBSCAN aplicado com sucesso.")
     return is_outlier_mask

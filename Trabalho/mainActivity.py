@@ -57,11 +57,11 @@ def main():
     subset_data = all_data_with_magnitudes[(all_data_with_magnitudes[:, 0] == device_id) & (all_data_with_magnitudes[:, 11] == activity_id)]
     acc_data_3d = subset_data[:, 1:4]
     cluster_labels_acc,kmeans_model = calculo.aplicar_kmeans(acc_data_3d, n_clusters)
-    outliers_kmeans_mask = calculo.identificar_outliers_kmeans_distancia(acc_data_3d, cluster_labels_acc, kmeans_model, percentile=95)
     print("\nAnálise concluída.")
     
     # 3.7 - Deteção de Outliers com k-Means e DBSCAN
     print("\n--- Requisitos 3.7: Deteção de Outliers com k-Means ---")
+    outliers_kmeans_mask = calculo.identificar_outliers_kmeans_distancia(acc_data_3d, cluster_labels_acc, kmeans_model, percentile=99)
     plot_title_kmeans = f'Clusters k-Means (k={n_clusters}) para Disp {device_id}, Ativ {activity_id}'
     graficos.visualizar_clusters_kmeans_3d(acc_data_3d, cluster_labels_acc, n_clusters, plot_title_kmeans)
     plot_title_outliers_kmeans = f'Outliers k-Means para Disp {device_id}, Ativ {activity_id}'
