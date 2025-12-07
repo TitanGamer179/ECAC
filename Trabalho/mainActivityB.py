@@ -135,13 +135,8 @@ def main():
             "y_test": y_test_seg
         }
     }
-    #=========================================================================
     #5. Evaluation - Report Results
-    #=========================================================================
-    print("\n" + "="*80)
-    print("INICIANDO AVALIAÇÃO COMPLETA (REPORT RESULTS)...")
-    print("Com múltiplas iterações para análise estatística robusta")
-    print("="*80)
+    print("Avaliação completa da questão 5:")
     results, predictions = calculoB.report_results(
         dataset, 
         participants=parts_seg, 
@@ -149,23 +144,12 @@ def main():
     )
     print("\nAvaliação concluída com sucesso!")
     
-    # 5.3 - Análise Comparativa dos Resultados (com Teste de Friedman e Student Pareado)
-    print("\n" + "="*80)
-    print("INICIANDO ANÁLISE COMPARATIVA (REQUISITO 5.3)...")
-    print("Inclui: Teste de Friedman + Teste T de Student Pareado")
-    print("="*80)
+    # 5.3 - Análise comparativa dos dois resultados com os dois testes
+    print("Análise comparativa dos resultados (5.3):")
     calculoB.analyze_results_5_3(results, predictions)
-    
-    #=========================================================================
-    #6. Deployment
-    #=========================================================================
-    print("\n" + "="*80)
-    print("REQUISITO 6: DEPLOYMENT DO MODELO")
-    print("="*80)
-    
-    # 6.1 Selecionar a melhor configuração baseada nos resultados (5.3)
-    print("\n6.1. SELECIONANDO MELHOR MODELO PARA DEPLOYMENT...")
-    print("-" * 70)
+ 
+    # 6.1 Selecionar melhor configuração para deployement
+    print("\n6.1. A selecionar o melhor modelo:")
     best_config_name = max(results.items(), key=lambda x: x[1]['mean_acc'])[0]
     best_config_metrics = results[best_config_name]
     
@@ -177,10 +161,8 @@ def main():
     print(f"  F1-Score: {best_config_metrics['metrics'][0]['f1_score']:.4f}")
     
     # 6.2 Extrair parâmetros e modelo do Requisito 5
-    print("\n6.2. EXTRAINDO MODELO TREINADO DO REQUISITO 5...")
-    print("-" * 70)
-    
-    # Extrair parâmetros da melhor configuração
+    print("\n6.2. A extrair o modelo treinado")    
+ 
     parts = best_config_name.split('_')
     best_dataset = parts[0] + '_' + parts[1]  # Dataset_A ou Dataset_B
     best_method = parts[2]  # all, pca, relief
@@ -191,9 +173,8 @@ def main():
     print(f"  Método de Seleção: {best_method}")
     print(f"  Estratégia de Split: {best_strategy}")
     
-    # 6.3 Recuperar modelo, scaler e selector do Requisito 5
-    print("\n6.3. RECUPERANDO COMPONENTES DO MODELO DO REQUISITO 5...")
-    print("-" * 70)
+    # 6.3 Recuperar alguns aspetos do modelo 5
+    print("\n6.3. A recuperar o modelo trainado: ")
     
     # O modelo, scaler e selector já foram treinados no Requisito 5
     # Estão armazenados nos dados dos configs do Requisito 5
@@ -245,10 +226,9 @@ def main():
     print(f"  Acurácia no Teste: {test_accuracy_deployed:.4f}")
     
     # 6.4 Criar estrutura de deployment
-    print("\n6.4. CRIANDO PIPELINE DE DEPLOYMENT...")
-    print("-" * 70)
+    print("\n6.4. A criar uma pipeline para o deployement")
     
-    # Determinar tipo de extrator de features
+    # Determinar o tipo de extrator de features
     if best_dataset == "Dataset_B":
         feature_extractor_type = 'embedding'
     else:
@@ -273,25 +253,24 @@ def main():
     }
     
     print("\nComponentes de Deployment:")
-    print(f"  ✓ Modelo k-NN (k={best_k_model})")
-    print(f"  ✓ Scaler ({type(scaler_model).__name__})")
-    print(f"  ✓ Feature Selector ({best_method})")
-    print(f"  ✓ Configuração: {best_dataset} - {best_method} - {best_strategy}")
+    print(f" Modelo k-NN (k={best_k_model})")
+    print(f" Scaler ({type(scaler_model).__name__})")
+    print(f" Feature Selector ({best_method})")
+    print(f" Configuração: {best_dataset} - {best_method} - {best_strategy}")
     
     # 6.5 Testar função de predição
-    print("\n6.5. TESTANDO FUNÇÃO DE DEPLOYMENT...")
-    print("-" * 70)
-    
+    print("\n6.5.Testar a função de predição do modelo deployado:")
+
     # Testar com alguns exemplos de teste
     n_test_samples = min(3, len(X_test_fs))
-    print(f"\nTestando modelo deployado com {n_test_samples} amostras:")
+    print(f"\nA testar o deployed model com {n_test_samples} amostras:")
     
     for i in range(n_test_samples):
         # Usar dados já processados pelo feature selector
         X_sample = X_test_fs[i:i+1]
         y_true_sample = y_test[i]
         
-        # Fazer predição
+        # Fazer a prediction
         prediction = model_deployed.predict(X_sample)[0]
         probas = model_deployed.predict_proba(X_sample)[0]
         confidence = np.max(probas)
@@ -300,47 +279,36 @@ def main():
         print(f"    Atividade Predita: {int(prediction)}")
         print(f"    Confiança: {confidence:.4f}")
         print(f"    Verdadeira: {int(y_true_sample)}")
-        print(f"    {'✓ CORRETO' if int(prediction) == int(y_true_sample) else '✗ INCORRETO'}")
     
     # 6.6 Salvar informações de deployment
-    print("\n6.6. INFORMAÇÕES DE DEPLOYMENT...")
-    print("-" * 70)
-    print(f"\nModelo de Deployment Criado com Sucesso!")
-    print(f"  Fonte: Melhor modelo do Requisito 5")
+    print("\n6.6. Informações mais relevantes do deployement:")
+
     print(f"  Dataset Utilizado: {deployment_model['config']['dataset']}")
     print(f"  Método de Seleção: {deployment_model['config']['method']}")
     print(f"  Estratégia: {deployment_model['config']['strategy']}")
     print(f"  Acurácia Média (Requisito 5): {deployment_model['best_accuracy']:.4f}")
     print(f"  Acurácia em Teste (Reconstruído): {test_accuracy_deployed:.4f}")
-    print(f"\nO modelo está pronto para ser utilizado em produção!")
-    print(f"Utilize a função deploy_model() de calculoB.py com os parâmetros acima.")
 
-    # =========================================================================
-    # 7. GO FURTHER: TESTANDO CLASSIFICADORES AVANÇADOS E MELHORIAS
-    # =========================================================================
-    print("\n" + "="*80)
-    print("7. GO FURTHER: TESTANDO CLASSIFICADORES AVANÇADOS")
-    print("="*80)
-    
+    # 7. Melhorias aplicadas para o modelo de classificação
+
+    print("7. Aplicar melhorias:")
+  
     # Dados do melhor cenário (Dataset_A_relief_Within-Subject)
     # X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test já estão disponíveis
     best_k_r7 = 5  # k-NN padrão para LOSO e calibração
     
-    print("\n7.1. TESTANDO SVM com Kernel RBF")
-    print("-" * 80)
+    print("\n7.1. A testar o SVM com Kernel RBF")
+  
     _, svm_metrics, svm_model, svm_preds = calculoB.hyperparameter_tuning_svm(
         X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test
     )
     
-    print("\n7.2. TESTANDO RANDOM FOREST")
-    print("-" * 80)
+    print("\n7.2. A testar o Random Forest")
     _, rf_metrics, rf_model, rf_preds = calculoB.hyperparameter_tuning_rf(
         X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test
     )
     
-    print("\n7.3. TESTANDO LEAVE-ONE-SUBJECT-OUT (LOSO)")
-    print("-" * 80)
-    print("\nAnalisando generalização entre participantes (sem overfitting por subject)...")
+    print("\n7.3. A testar LOSO, Cross-Validation")
     
     # Preparar dados completos com as features originais (antes da seleção ReliefF)
     X_all_manual = np.vstack((X_train_manual, X_val_manual, X_test_manual))
@@ -367,8 +335,7 @@ def main():
         model_type='rf', k=5
     )
     
-    print("\n7.4. TESTANDO CALIBRAÇÃO DE PROBABILIDADES (PLATT SCALING)")
-    print("-" * 80)
+    print("\n7.4. Testar a calibração de modelos")
     
     print("\n  7.4.1 Calibração com k-NN")
     calib_knn_model, calib_knn_metrics, calib_knn_pred, calib_knn_conf = calculoB.train_evaluate_with_calibration(
@@ -387,126 +354,5 @@ def main():
         X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test, 
         model_type='rf', k=5
     )
-    
-    # =========================================================================
-    # 7.5 RESUMO COMPARATIVO DAS MELHORIAS
-    # =========================================================================
-    print("\n" + "="*80)
-    print("7.5. RESUMO COMPARATIVO DE TODAS AS MELHORIAS")
-    print("="*80)
-    
-    print("\n┌─────────────────────────────────────────────────────────────┐")
-    print("│ COMPARACAO DE MODELOS - WITHIN-SUBJECT (Cenário Vencedor)   │")
-    print("└─────────────────────────────────────────────────────────────┘\n")
-    
-    print(f"{'Modelo':<25} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
-    print("-" * 80)
-    
-    # k-NN baseline (melhor config do R5)
-    print(f"{'k-NN (R5 Vencedor)':<25} | {best_config_metrics['metrics'][0]['accuracy']:.4f}     | "
-          f"{best_config_metrics['metrics'][0]['precision']:.4f}      | "
-          f"{best_config_metrics['metrics'][0]['recall']:.4f}      | "
-          f"{best_config_metrics['metrics'][0]['f1_score']:.4f}")
-    
-    # SVM
-    print(f"{'SVM (R7 Melhoria 1)':<25} | {svm_metrics['accuracy']:.4f}     | "
-          f"{svm_metrics['precision']:.4f}      | "
-          f"{svm_metrics['recall']:.4f}      | "
-          f"{svm_metrics['f1_score']:.4f}")
-    
-    # Random Forest
-    print(f"{'Random Forest (R7 Mel.2)':<25} | {rf_metrics['accuracy']:.4f}     | "
-          f"{rf_metrics['precision']:.4f}      | "
-          f"{rf_metrics['recall']:.4f}      | "
-          f"{rf_metrics['f1_score']:.4f}")
-    
-    print("\n┌─────────────────────────────────────────────────────────────┐")
-    print("│ VALIDACAO CROSS-SUBJECT (LOSO) - Generalização Real         │")
-    print("└─────────────────────────────────────────────────────────────┘\n")
-    
-    print(f"{'Modelo':<25} | {'Mean Acc':<12} | {'Std Acc':<12} | {'Mean F1':<12} | {'Std F1':<12}")
-    print("-" * 80)
-    
-    print(f"{'k-NN LOSO':<25} | {loso_knn['mean_acc']:.4f}       | {loso_knn['std_acc']:.4f}       | "
-          f"{loso_knn['mean_f1']:.4f}       | {loso_knn['std_f1']:.4f}")
-    
-    print(f"{'SVM LOSO':<25} | {loso_svm['mean_acc']:.4f}       | {loso_svm['std_acc']:.4f}       | "
-          f"{loso_svm['mean_f1']:.4f}       | {loso_svm['std_f1']:.4f}")
-    
-    print(f"{'RF LOSO':<25} | {loso_rf['mean_acc']:.4f}       | {loso_rf['std_acc']:.4f}       | "
-          f"{loso_rf['mean_f1']:.4f}       | {loso_rf['std_f1']:.4f}")
-    
-    print("\n┌─────────────────────────────────────────────────────────────┐")
-    print("│ CALIBRACAO DE PROBABILIDADES (CONFIANCA REAL)               │")
-    print("└─────────────────────────────────────────────────────────────┘\n")
-    
-    print(f"{'Modelo Calibrado':<25} | {'Accuracy':<10} | {'Mean Conf':<12} | {'Min-Max Conf':<20}")
-    print("-" * 80)
-    
-    print(f"{'k-NN Calibrado':<25} | {calib_knn_metrics['accuracy']:.4f}     | "
-          f"{calib_knn_metrics['mean_confidence']:.4f}       | "
-          f"[{calib_knn_metrics['min_confidence']:.4f}, {calib_knn_metrics['max_confidence']:.4f}]")
-    
-    print(f"{'SVM Calibrado':<25} | {calib_svm_metrics['accuracy']:.4f}     | "
-          f"{calib_svm_metrics['mean_confidence']:.4f}       | "
-          f"[{calib_svm_metrics['min_confidence']:.4f}, {calib_svm_metrics['max_confidence']:.4f}]")
-    
-    print(f"{'RF Calibrado':<25} | {calib_rf_metrics['accuracy']:.4f}     | "
-          f"{calib_rf_metrics['mean_confidence']:.4f}       | "
-          f"[{calib_rf_metrics['min_confidence']:.4f}, {calib_rf_metrics['max_confidence']:.4f}]")
-    
-    print("\n" + "="*80)
-    print("7.6. CONCLUSOES E RECOMENDACOES")
-    print("="*80)
-    
-    # Calcular melhorias
-    knn_baseline_f1 = best_config_metrics['metrics'][0]['f1_score']
-    svm_improvement = ((svm_metrics['f1_score'] - knn_baseline_f1) / knn_baseline_f1) * 100
-    rf_improvement = ((rf_metrics['f1_score'] - knn_baseline_f1) / knn_baseline_f1) * 100
-    
-    print(f"\n🎯 Melhorias em F1-Score (comparado com k-NN baseline):")
-    print(f"   • SVM: {svm_improvement:+.2f}% (F1: {svm_metrics['f1_score']:.4f} vs {knn_baseline_f1:.4f})")
-    print(f"   • RF:  {rf_improvement:+.2f}% (F1: {rf_metrics['f1_score']:.4f} vs {knn_baseline_f1:.4f})")
-    
-    print(f"\n🔍 Análise de Generalização (LOSO - Melhor Indicador de Performance Real):")
-    print(f"\n   Performance Within-Subject vs LOSO (gap):")
-    loso_drop_knn = ((loso_knn['mean_f1'] - knn_baseline_f1) / knn_baseline_f1) * 100
-    loso_drop_svm = ((loso_svm['mean_f1'] - svm_metrics['f1_score']) / svm_metrics['f1_score']) * 100
-    loso_drop_rf = ((loso_rf['mean_f1'] - rf_metrics['f1_score']) / rf_metrics['f1_score']) * 100
-    
-    print(f"   • k-NN:  WS={knn_baseline_f1:.4f} → LOSO={loso_knn['mean_f1']:.4f} (gap: {loso_drop_knn:+.2f}%)")
-    print(f"   • SVM:   WS={svm_metrics['f1_score']:.4f} → LOSO={loso_svm['mean_f1']:.4f} (gap: {loso_drop_svm:+.2f}%) ✅ MENOR GAP")
-    print(f"   • RF:    WS={rf_metrics['f1_score']:.4f} → LOSO={loso_rf['mean_f1']:.4f} (gap: {loso_drop_rf:+.2f}%)")
-    
-    print(f"\n   📊 Interpretação:")
-    print(f"   • SVM com MENOR gap = MELHOR generalizador para novos utilizadores")
-    print(f"   • Indica que SVM sofre MENOS overfitting por participante")
-    print(f"   • LOSO prova robustez superior do SVM em cenários reais")
-    
-    print(f"\n📊 Confianca das Predicoes (Calibracao):")
-    print(f"   • k-NN Calibrado: Confiança média = {calib_knn_metrics['mean_confidence']:.4f}")
-    print(f"   • SVM Calibrado:  Confiança média = {calib_svm_metrics['mean_confidence']:.4f} ✅ RECOMENDADO")
-    print(f"   • RF Calibrado:   Confiança média = {calib_rf_metrics['mean_confidence']:.4f}")
-    
-    print(f"\n✅ RECOMENDACAO FINAL - BASEADA EM ANÁLISE LOSO:")
-    print(f"   ════════════════════════════════════════════════════════════")
-    print(f"   🏆 MELHOR MODELO PARA PRODUÇÃO: SVM com RBF + Calibração")
-    print(f"   ════════════════════════════════════════════════════════════")
-    print(f"\n   Justificativa:")
-    print(f"   • ✅ Melhor generalizador segundo LOSO (menor gap {loso_drop_svm:.2f}%)")
-    print(f"   • ✅ Prova robustez estatística em novos utilizadores")
-    print(f"   • ✅ F1-Score competitive: {svm_metrics['f1_score']:.4f}")
-    print(f"   • ✅ Confiança calibrada: {calib_svm_metrics['mean_confidence']:.4f}")
-    print(f"   • ✅ Menor overfitting por participante")
-    print(f"\n   Implementação Recomendada:")
-    print(f"   └─ Usar: SVM (C=10, gamma=scale) + Calibração Platt Scaling")
-    print(f"   └─ Dados: ReliefF features (top-15)")
-    print(f"   └─ Validação: LOSO prova generalização real")
-    print(f"\n   Alternativas:")
-    print(f"   • Random Forest se feature importance for crítica")
-    print(f"   • k-NN apenas para baselines/comparação")
-    print(f"\n   • Meta 2 CONCLUIDA COM SUCESSO!")
-    print("="*80 + "\n")
-
 if __name__ == "__main__":
     main() 

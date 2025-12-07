@@ -48,7 +48,6 @@ def generate_examples(features, labels, num_examples=5):
     plt.show()
 
 def plot_confusion_matrix(y_true, y_pred, title="Matriz de Confusão"):
-    """Visualizar matriz de confusão."""
     from sklearn.metrics import confusion_matrix
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(10, 8))
@@ -71,7 +70,6 @@ def plot_confusion_matrix(y_true, y_pred, title="Matriz de Confusão"):
     plt.show()
 
 def plot_feature_importance(importance, feature_names=None, top_n=15, title="Importância de Features"):
-    """Visualizar importância das features (ReliefF ou PCA)."""
     if feature_names is None:
         feature_names = [f"F{i}" for i in range(len(importance))]
     
