@@ -72,33 +72,3 @@ def acc_segmentation(data):
 
 
 
-# load example file to test embedding
-import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-csv_file_path = os.path.join(script_dir, 'diretoria', 'part13', 'part13dev1.csv')
-csv_data = np.loadtxt(csv_file_path, delimiter=',')
-
-original_segments, activities = acc_segmentation(csv_data)
-
-resampled_segments = [resample_to_30hz_5s(segment, 51.5)[0] for segment in original_segments]
-
-feature_encoder = load_model()
-
-
-embeddings_list = []
-
-# reshape segments to [n_segments, dimensions(xyz), time]
-x_all = np.transpose( np.array(resampled_segments), (0, 2, 1) )
-print(x_all.shape)
-
-# iterate over the resampled segments and pass them 
-#    through the model in batches to get the embeddings
-batch_size = 5
-with torch.no_grad():
-    for i in range(0, x_all.shape[0], batch_size):
-        xb = torch.from_numpy(x_all[i:i+batch_size]).float().to("cpu")
-        eb = feature_encoder(xb)  # (B, D_embed)
-        embeddings_list.append(eb.cpu().numpy())
-
-embeddings = np.concatenate(embeddings_list, axis=0)
-print(embeddings.shape)
