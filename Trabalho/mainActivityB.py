@@ -135,7 +135,9 @@ def main():
             "y_test": y_test_seg
         }
     }
+    #==========================================================================
     #5. Evaluation - Report Results
+    #==========================================================================
     print("Avaliação completa da questão 5:")
     results, predictions = calculoB.report_results(
         dataset, 
@@ -147,7 +149,9 @@ def main():
     # 5.3 - Análise comparativa dos dois resultados com os dois testes
     print("Análise comparativa dos resultados (5.3):")
     calculoB.analyze_results_5_3(results, predictions)
- 
+    #==========================================================================
+    #6. Deployment
+    #==========================================================================
     # 6.1 Selecionar melhor configuração para deployement
     print("\n6.1. A selecionar o melhor modelo:")
     best_config_name = max(results.items(), key=lambda x: x[1]['mean_acc'])[0]
@@ -288,9 +292,10 @@ def main():
     print(f"  Estratégia: {deployment_model['config']['strategy']}")
     print(f"  Acurácia Média (Requisito 5): {deployment_model['best_accuracy']:.4f}")
     print(f"  Acurácia em Teste (Reconstruído): {test_accuracy_deployed:.4f}")
-
+    
+    #==========================================================================
     # 7. Melhorias aplicadas para o modelo de classificação
-
+    #==========================================================================
     print("7. Aplicar melhorias:")
   
     # Dados do melhor cenário (Dataset_A_relief_Within-Subject)
