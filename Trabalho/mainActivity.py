@@ -56,14 +56,14 @@ def main():
     n_clusters = 8     
     subset_data = all_data_with_magnitudes[(all_data_with_magnitudes[:, 0] == device_id) & (all_data_with_magnitudes[:, 11] == activity_id)]
     acc_data_3d = subset_data[:, 1:4]
-    cluster_labels_acc = calculo.aplicar_kmeans(acc_data_3d, n_clusters)
+    cluster_labels_acc,kmeans_model = calculo.aplicar_kmeans(acc_data_3d, n_clusters)
+    outliers_kmeans_mask = calculo.identificar_outliers_kmeans_distancia(acc_data_3d, cluster_labels_acc, kmeans_model, percentile=95)
     print("\nAnálise concluída.")
     
     # 3.7 - Deteção de Outliers com k-Means e DBSCAN
     print("\n--- Requisitos 3.7: Deteção de Outliers com k-Means ---")
     plot_title_kmeans = f'Clusters k-Means (k={n_clusters}) para Disp {device_id}, Ativ {activity_id}'
     graficos.visualizar_clusters_kmeans_3d(acc_data_3d, cluster_labels_acc, n_clusters, plot_title_kmeans)
-    outliers_kmeans_mask = calculo.identificar_outliers_kmeans(cluster_labels_acc)
     plot_title_outliers_kmeans = f'Outliers k-Means para Disp {device_id}, Ativ {activity_id}'
     graficos.visualizar_outliers_3d(acc_data_3d, outliers_kmeans_mask, plot_title_outliers_kmeans)
     print(f"Número de outliers detetados com k-Means: {np.sum(outliers_kmeans_mask)}")
@@ -82,7 +82,7 @@ def main():
     
     # 4.2 - Extração de features
     print("\n--- Requisito 4.2: Extração de Features (Temporais e Espectrais) ---")
-    feature_matrix, labels, dispositivos = calculo.extrair_features(all_data_with_magnitudes)
+    feature_matrix, labels, _ = calculo.extrair_features(all_data_with_magnitudes)
     
     if feature_matrix is None or feature_matrix.size == 0:
         print("\nERRO: Não foi possível extrair features. Encerrando análise.")

@@ -63,7 +63,7 @@ def aplicar_kmeans(data_3d, n_clusters):
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
     labels = kmeans.fit_predict(data_3d)
     print("K-means aplicado com sucesso.")
-    return labels
+    return labels, kmeans
 
 def identificar_outliers_kmeans(labels, min_size_percent=1.0):
     print("A identificar outliers com base nos clusters do k-means...")
@@ -521,3 +521,15 @@ def exemplo_selecao_features(feature_matrix, fisher_ranking, relieff_ranking, id
     print(f"   Dimensões após seleção: 10")
     print(f"   Redução: {(1 - 10/len(features_original))*100:.1f}%")
 
+def identificar_outliers_kmeans_distancia(data, labels, kmeans_model, percentile=95):
+    centroids = kmeans_model.cluster_centers_
+    distances = []
+    for i, point in enumerate(data):
+        centroid = centroids[labels[i]]
+        dist = np.linalg.norm(point - centroid)
+        distances.append(dist)
+    distances = np.array(distances)
+    threshold = np.percentile(distances, percentile)
+    is_outlier_mask = distances > threshold   
+    print(f"Limiar de distância definido: {threshold:.4f}")
+    return is_outlier_mask
