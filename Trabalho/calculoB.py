@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from scipy.signal import resample
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -65,37 +64,62 @@ def apply_smote(features, labels):
 
 # Requesito 2.1: Extração de Features de Embedding
 def extract_embedding_features(features):
-    print("Carregando modelo Harnet5...")
+    print("\n" + "="*80)
+    print("EXTRAINDO EMBEDDINGS DO HARNET5...")
+    print("="*80)
+    print(f"[DEBUG] Número de segmentos: {len(features)}")
+    if len(features) > 0:
+        print(f"[DEBUG] Forma de cada segmento: {features[0].shape}")
+    
     feature_encoder = embeddings_extractor.load_model()
     processed_features = []
     fs_original = 51.5
-    for segment in features:
-        acc_xyz=segment[:,1:4]
+    
+    for i, segment in enumerate(features):
+        acc_xyz = segment[:, 1:4]
         acc_resampled, _ = embeddings_extractor.resample_to_30hz_5s(acc_xyz, fs_original)
         processed_features.append(acc_resampled)
+        
+        if i == 0:
+            print(f"[DEBUG] Primeiro segmento resampled shape: {acc_resampled.shape}")
+    
     x_all = np.transpose(np.array(processed_features), (0, 2, 1))
-    embeddings_list=[]
+    print(f"[DEBUG] x_all shape antes do modelo: {x_all.shape}")
+    print(f"[DEBUG] dtype: {x_all.dtype}")
+    
+    embeddings_list = []
     batch_size = 32
     with torch.no_grad():
-        for i in range(0, x_all.shape[0], batch_size):
-            batch = x_all[i:i+batch_size]
+        for batch_idx in range(0, x_all.shape[0], batch_size):
+            batch = x_all[batch_idx:batch_idx+batch_size]
             batch_tensor = torch.tensor(batch, dtype=torch.float32)
             embeddings = feature_encoder(batch_tensor)
             embeddings_list.append(embeddings.cpu().numpy())
-    final_embeddings=np.concatenate(embeddings_list, axis=0)
+            
+            if batch_idx == 0:
+                print(f"[DEBUG] Embedding shape (primeiro batch): {embeddings.shape}")
+    
+    final_embeddings = np.concatenate(embeddings_list, axis=0)
+    print(f"[DEBUG] Final embeddings shape antes reshape: {final_embeddings.shape}")
+    print(f"[DEBUG] Mín: {final_embeddings.min():.4f}, Máx: {final_embeddings.max():.4f}, Média: {final_embeddings.mean():.4f}")
+    
     if final_embeddings.ndim > 2:
-        final_embeddings=final_embeddings.reshape(final_embeddings.shape[0], -1)
+        final_embeddings = final_embeddings.reshape(final_embeddings.shape[0], -1)
+    
+    print(f"[DEBUG] Final embeddings shape FINAL: {final_embeddings.shape}")
+    print(f"✓ Extração de embeddings concluída com sucesso!")
+    print("="*80 + "\n")
     return final_embeddings
 
 # Requisito 3.1: TVT Split 60-20-20 Estratificado
-def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2, random_state=None):
     """Split estratificado que mantém as proporções das classes em cada subset."""
-    test=StratifiedShuffleSplit(n_splits=1, test_size=test_ratio, random_state=42)
+    test=StratifiedShuffleSplit(n_splits=1, test_size=test_ratio, random_state=random_state)
     train_val_idx, test_idx = next(test.split(features, labels))
     x_train_val=features[train_val_idx]
     y_train_val=labels[train_val_idx]
     original_idx_train_val=train_val_idx
-    val=StratifiedShuffleSplit(n_splits=1, test_size=val_ratio/(train_ratio + val_ratio), random_state=42)
+    val=StratifiedShuffleSplit(n_splits=1, test_size=val_ratio/(train_ratio + val_ratio), random_state=random_state)
     train_idx, val_idx = next(val.split(x_train_val, y_train_val))
     final_train_idx=original_idx_train_val[train_idx]
     final_val_idx=original_idx_train_val[val_idx]
@@ -107,9 +131,16 @@ def tvt_split(features, labels, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
     return final_train_idx, final_val_idx, test_idx
 
 # Requisito 3.2: TVT Split por Participante (Dinâmico para qualquer número)
-def split_between_subjects(parts):
+def split_between_subjects(parts, random_state=None):
+    """Split entre participantes com randomização a cada iteração.
+    
+    Args:
+        parts: Array com IDs dos participantes
+        random_state: None para randomização a cada iteração, ou int para seed fixo
+    """
     unique_parts = np.unique(parts)
-    np.random.seed(42)
+    if random_state is not None:
+        np.random.seed(random_state)
     shuffled_parts = np.random.permutation(unique_parts)
     n_parts = len(unique_parts)
     train_size = int(0.6 * n_parts)
@@ -118,9 +149,9 @@ def split_between_subjects(parts):
     val_p_ids = shuffled_parts[train_size:train_size+val_size]
     test_p_ids = shuffled_parts[train_size+val_size:]
     print(f"Participantes atribuídos (60-20-20 dinâmico):")
-    print(f"  Treino: {train_p_ids} ({len(train_p_ids)}/{n_parts})")
-    print(f"  Validação: {val_p_ids} ({len(val_p_ids)}/{n_parts})")
-    print(f"  Teste: {test_p_ids} ({len(test_p_ids)}/{n_parts})")
+    print(f"  Treino: {sorted([int(x) for x in train_p_ids])} ({len(train_p_ids)}/{n_parts})")
+    print(f"  Validação: {sorted([int(x) for x in val_p_ids])} ({len(val_p_ids)}/{n_parts})")
+    print(f"  Teste: {sorted([int(x) for x in test_p_ids])} ({len(test_p_ids)}/{n_parts})")
     train_idx = np.where(np.isin(parts, train_p_ids))[0]
     val_idx = np.where(np.isin(parts, val_p_ids))[0]
     test_idx = np.where(np.isin(parts, test_p_ids))[0]
@@ -265,12 +296,12 @@ def report_results(datasets_dict, participants=None, n_iterations=1):
                 
                 for iter in range(n_iterations):
                     if split_strategy == 'Within-Subject':
-                        train_idx, val_idx, test_idx = tvt_split(x_all, y_all)
+                        train_idx, val_idx, test_idx = tvt_split(x_all, y_all, random_state=None)
                     else:
                         if participants is None:
                             print("Erro: participantes não fornecidos para split Between-Subject.")
                             continue
-                        train_idx, val_idx, test_idx = split_between_subjects(participants)
+                        train_idx, val_idx, test_idx = split_between_subjects(participants, random_state=None)
                     
                     
                     X_train= x_all[train_idx]
@@ -642,4 +673,55 @@ def analyze_results_5_3(results, predictions):
         print(f"  ✓ {n_iterations} iterações - Robustez estatística ADEQUADA")
     
     print("\n" + "="*80)
-# Requisito 5.3: Hypothesis testing (completo com Friedman e Student Pareado)
+    
+    
+# Requisito 6: Deployement
+
+def deploy_model(raw_data, model, scaler, feature_extractor_func= None, selector= None, selector_type= None):
+    if feature_extractor_func:
+        features = feature_extractor_func(raw_data)
+    else:
+        acc_data= raw_data[:, 0:3]
+        acc_resample= embeddings_extractor.resample_to_30hz_5s(acc_data, fs_original=51.5)
+        feature_encoder= embeddings_extractor.load_model()
+        
+        x_input= np.transpose(acc_resample[np.newaxis, :, :], (0, 2, 1))
+        x_tensor= torch.tensor(x_input, dtype= torch.float32)
+        
+        with torch.no_grad():
+            embeddings= feature_encoder(x_tensor).cpu().numpy()
+        features= embeddings.reshape(1, -1)[0]
+        
+    features_norm= scaler.transform(features.reshape(1,-1))
+    
+    if selector is not None:
+        if selector_type == 'pca':
+            features_final= selector.transform(features_norm)
+        elif selector_type == 'relief':
+            features_final= features_norm[:, selector]
+    else:
+        features_final= features_norm
+    
+    prediction= model.predict_proba(features_final)[0]
+    proba= model.predict_proba(features_final)[0]
+    confidence= np.max(proba)
+    
+    return int(prediction), confidence
+
+def deploy_pipeline(best_model, datasets):
+    config = best_model['config']
+    model= best_model['model']
+    scaler= best_model['scaler']
+    selector= best_model['selector']
+    selector_type= best_model['selector_type']
+    
+    def predict_activity(raw_data_shape):
+        return deploy_model(raw_data_shape, model, scaler, feature_extractor_func= config.get('feature_extractor'), selector= selector, selector_type= selector_type)
+    
+    print("\nPipeline de deploy criada com sucesso!")
+    return predict_activity, config
+
+#Requisito 7.1: Implementar algumas das melhorias mencionadas no relatório final
+
+
+    
