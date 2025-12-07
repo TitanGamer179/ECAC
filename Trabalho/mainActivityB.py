@@ -314,12 +314,182 @@ def main():
     print(f"  Acurácia em Teste (Reconstruído): {test_accuracy_deployed:.4f}")
     print(f"\nO modelo está pronto para ser utilizado em produção!")
     print(f"Utilize a função deploy_model() de calculoB.py com os parâmetros acima.")
+
+    # =========================================================================
+    # 7. GO FURTHER: TESTANDO CLASSIFICADORES AVANÇADOS E MELHORIAS
+    # =========================================================================
+    print("\n" + "="*80)
+    print("7. GO FURTHER: TESTANDO CLASSIFICADORES AVANÇADOS")
+    print("="*80)
     
-    #=========================================================================
-    #7. Go further
-    #=========================================================================
+    # Dados do melhor cenário (Dataset_A_relief_Within-Subject)
+    # X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test já estão disponíveis
+    best_k_r7 = 5  # k-NN padrão para LOSO e calibração
     
+    print("\n7.1. TESTANDO SVM com Kernel RBF")
+    print("-" * 80)
+    _, svm_metrics, svm_model, svm_preds = calculoB.hyperparameter_tuning_svm(
+        X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test
+    )
     
+    print("\n7.2. TESTANDO RANDOM FOREST")
+    print("-" * 80)
+    _, rf_metrics, rf_model, rf_preds = calculoB.hyperparameter_tuning_rf(
+        X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test
+    )
+    
+    print("\n7.3. TESTANDO LEAVE-ONE-SUBJECT-OUT (LOSO)")
+    print("-" * 80)
+    print("\nAnalisando generalização entre participantes (sem overfitting por subject)...")
+    
+    # Preparar dados completos com as features originais (antes da seleção ReliefF)
+    X_all_manual = np.vstack((X_train_manual, X_val_manual, X_test_manual))
+    y_all_manual = np.hstack((y_train_manual, y_val_manual, y_test_manual))
+    parts_all_manual = np.hstack((parts_manual[:len(X_train_manual)], 
+                                  parts_manual[len(X_train_manual):len(X_train_manual)+len(X_val_manual)],
+                                  parts_manual[len(X_train_manual)+len(X_val_manual):]))
+    
+    print("\n  7.3.1 LOSO com k-NN (Baseline)")
+    loso_knn = calculoB.loso_cross_validation(
+        X_all_manual, y_all_manual, parts_all_manual, 
+        model_type='knn', k=best_k_r7
+    )
+    
+    print("\n  7.3.2 LOSO com SVM (RBF)")
+    loso_svm = calculoB.loso_cross_validation(
+        X_all_manual, y_all_manual, parts_all_manual, 
+        model_type='svm', k=5
+    )
+    
+    print("\n  7.3.3 LOSO com Random Forest")
+    loso_rf = calculoB.loso_cross_validation(
+        X_all_manual, y_all_manual, parts_all_manual, 
+        model_type='rf', k=5
+    )
+    
+    print("\n7.4. TESTANDO CALIBRAÇÃO DE PROBABILIDADES (PLATT SCALING)")
+    print("-" * 80)
+    
+    print("\n  7.4.1 Calibração com k-NN")
+    calib_knn_model, calib_knn_metrics, calib_knn_pred, calib_knn_conf = calculoB.train_evaluate_with_calibration(
+        X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test, 
+        model_type='knn', k=best_k_r7
+    )
+    
+    print("\n  7.4.2 Calibração com SVM")
+    calib_svm_model, calib_svm_metrics, calib_svm_pred, calib_svm_conf = calculoB.train_evaluate_with_calibration(
+        X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test, 
+        model_type='svm', k=5
+    )
+    
+    print("\n  7.4.3 Calibração com Random Forest")
+    calib_rf_model, calib_rf_metrics, calib_rf_pred, calib_rf_conf = calculoB.train_evaluate_with_calibration(
+        X_train_fs, y_train, X_val_fs, y_val, X_test_fs, y_test, 
+        model_type='rf', k=5
+    )
+    
+    # =========================================================================
+    # 7.5 RESUMO COMPARATIVO DAS MELHORIAS
+    # =========================================================================
+    print("\n" + "="*80)
+    print("7.5. RESUMO COMPARATIVO DE TODAS AS MELHORIAS")
+    print("="*80)
+    
+    print("\n┌─────────────────────────────────────────────────────────────┐")
+    print("│ COMPARACAO DE MODELOS - WITHIN-SUBJECT (Cenário Vencedor)   │")
+    print("└─────────────────────────────────────────────────────────────┘\n")
+    
+    print(f"{'Modelo':<25} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
+    print("-" * 80)
+    
+    # k-NN baseline (melhor config do R5)
+    print(f"{'k-NN (R5 Vencedor)':<25} | {best_config_metrics['metrics'][0]['accuracy']:.4f}     | "
+          f"{best_config_metrics['metrics'][0]['precision']:.4f}      | "
+          f"{best_config_metrics['metrics'][0]['recall']:.4f}      | "
+          f"{best_config_metrics['metrics'][0]['f1_score']:.4f}")
+    
+    # SVM
+    print(f"{'SVM (R7 Melhoria 1)':<25} | {svm_metrics['accuracy']:.4f}     | "
+          f"{svm_metrics['precision']:.4f}      | "
+          f"{svm_metrics['recall']:.4f}      | "
+          f"{svm_metrics['f1_score']:.4f}")
+    
+    # Random Forest
+    print(f"{'Random Forest (R7 Mel.2)':<25} | {rf_metrics['accuracy']:.4f}     | "
+          f"{rf_metrics['precision']:.4f}      | "
+          f"{rf_metrics['recall']:.4f}      | "
+          f"{rf_metrics['f1_score']:.4f}")
+    
+    print("\n┌─────────────────────────────────────────────────────────────┐")
+    print("│ VALIDACAO CROSS-SUBJECT (LOSO) - Generalização Real         │")
+    print("└─────────────────────────────────────────────────────────────┘\n")
+    
+    print(f"{'Modelo':<25} | {'Mean Acc':<12} | {'Std Acc':<12} | {'Mean F1':<12} | {'Std F1':<12}")
+    print("-" * 80)
+    
+    print(f"{'k-NN LOSO':<25} | {loso_knn['mean_acc']:.4f}       | {loso_knn['std_acc']:.4f}       | "
+          f"{loso_knn['mean_f1']:.4f}       | {loso_knn['std_f1']:.4f}")
+    
+    print(f"{'SVM LOSO':<25} | {loso_svm['mean_acc']:.4f}       | {loso_svm['std_acc']:.4f}       | "
+          f"{loso_svm['mean_f1']:.4f}       | {loso_svm['std_f1']:.4f}")
+    
+    print(f"{'RF LOSO':<25} | {loso_rf['mean_acc']:.4f}       | {loso_rf['std_acc']:.4f}       | "
+          f"{loso_rf['mean_f1']:.4f}       | {loso_rf['std_f1']:.4f}")
+    
+    print("\n┌─────────────────────────────────────────────────────────────┐")
+    print("│ CALIBRACAO DE PROBABILIDADES (CONFIANCA REAL)               │")
+    print("└─────────────────────────────────────────────────────────────┘\n")
+    
+    print(f"{'Modelo Calibrado':<25} | {'Accuracy':<10} | {'Mean Conf':<12} | {'Min-Max Conf':<20}")
+    print("-" * 80)
+    
+    print(f"{'k-NN Calibrado':<25} | {calib_knn_metrics['accuracy']:.4f}     | "
+          f"{calib_knn_metrics['mean_confidence']:.4f}       | "
+          f"[{calib_knn_metrics['min_confidence']:.4f}, {calib_knn_metrics['max_confidence']:.4f}]")
+    
+    print(f"{'SVM Calibrado':<25} | {calib_svm_metrics['accuracy']:.4f}     | "
+          f"{calib_svm_metrics['mean_confidence']:.4f}       | "
+          f"[{calib_svm_metrics['min_confidence']:.4f}, {calib_svm_metrics['max_confidence']:.4f}]")
+    
+    print(f"{'RF Calibrado':<25} | {calib_rf_metrics['accuracy']:.4f}     | "
+          f"{calib_rf_metrics['mean_confidence']:.4f}       | "
+          f"[{calib_rf_metrics['min_confidence']:.4f}, {calib_rf_metrics['max_confidence']:.4f}]")
+    
+    print("\n" + "="*80)
+    print("7.6. CONCLUSOES E RECOMENDACOES")
+    print("="*80)
+    
+    # Calcular melhorias
+    knn_baseline_f1 = best_config_metrics['metrics'][0]['f1_score']
+    svm_improvement = ((svm_metrics['f1_score'] - knn_baseline_f1) / knn_baseline_f1) * 100
+    rf_improvement = ((rf_metrics['f1_score'] - knn_baseline_f1) / knn_baseline_f1) * 100
+    
+    print(f"\n🎯 Melhorias em F1-Score (comparado com k-NN baseline):")
+    print(f"   • SVM: {svm_improvement:+.2f}% (F1: {svm_metrics['f1_score']:.4f} vs {knn_baseline_f1:.4f})")
+    print(f"   • RF:  {rf_improvement:+.2f}% (F1: {rf_metrics['f1_score']:.4f} vs {knn_baseline_f1:.4f})")
+    
+    print(f"\n🔍 Realismo da Avaliacao (LOSO vs Within-Subject):")
+    loso_drop_knn = ((loso_knn['mean_f1'] - knn_baseline_f1) / knn_baseline_f1) * 100
+    print(f"   • k-NN: {loso_drop_knn:+.2f}% (LOSO={loso_knn['mean_f1']:.4f} vs WS={knn_baseline_f1:.4f})")
+    print(f"     ⚠️  Redução esperada indica possivel overfitting por participante")
+    
+    print(f"\n📊 Confianca das Predicoes (Calibracao):")
+    print(f"   • k-NN Calibrado: Confiança média = {calib_knn_metrics['mean_confidence']:.4f}")
+    print(f"   • SVM Calibrado:  Confiança média = {calib_svm_metrics['mean_confidence']:.4f}")
+    print(f"   • RF Calibrado:   Confiança média = {calib_rf_metrics['mean_confidence']:.4f}")
+    
+    best_model_r7 = max([
+        ("SVM", svm_metrics['f1_score']),
+        ("RF", rf_metrics['f1_score']),
+        ("k-NN", knn_baseline_f1)
+    ], key=lambda x: x[1])
+    
+    print(f"\n✅ RECOMENDACAO FINAL:")
+    print(f"   • Melhor modelo para produção: {best_model_r7[0]} (F1-Score: {best_model_r7[1]:.4f})")
+    print(f"   • Usar calibração para aplicações com risco crítico")
+    print(f"   • LOSO valida generalização real entre participantes")
+    print(f"   • Meta 2 CONCLUIDA COM SUCESSO!")
+    print("="*80 + "\n")
 
 if __name__ == "__main__":
     main() 

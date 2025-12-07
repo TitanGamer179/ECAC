@@ -1,10 +1,13 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.calibration import CalibratedClassifierCV
 from scipy.signal import resample
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneGroupOut
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from scipy import stats
 import random
@@ -270,8 +273,292 @@ def hyperparameter_tuning(X_train, y_train, X_val, y_val, X_test, y_test, k_rang
     print(f"F1-Score no Teste com k={best_val_k}: {test_metrics['f1_score']:.4f}")
     return best_val_k, test_metrics, val_accuracy, best_model,y_test_preds
     
+# ==================================================================================
+# 🔴 MELHORIA 1: SVM com Kernel RBF (Superior em muitos casos)
+# ==================================================================================
+def hyperparameter_tuning_svm(X_train, y_train, X_val, y_val, X_test, y_test):
+    """
+    SVM com kernel RBF - frequentemente melhor que k-NN para dados altos-dimensionais.
+    Testa diferentes valores de C (regularização) e gamma (kernel).
+    """
+    print("\n" + "="*80)
+    print("🔴 MELHORIA 1: Testando SVM com Kernel RBF")
+    print("="*80)
+    
+    # Grid de hiperparâmetros para SVM
+    C_values = [0.1, 1, 10, 100]
+    gamma_values = ['scale', 'auto', 0.001, 0.01, 0.1]
+    
+    best_val_acc = 0
+    best_params = {'C': None, 'gamma': None}
+    best_model_svm = None
+    
+    print(f"\n[SVM] Testando {len(C_values) * len(gamma_values)} combinações...")
+    
+    for C in C_values:
+        for gamma in gamma_values:
+            svm = SVC(kernel='rbf', C=C, gamma=gamma, probability=True, random_state=42)
+            svm.fit(X_train, y_train)
+            y_val_preds = svm.predict(X_val)
+            val_acc = accuracy_score(y_val, y_val_preds)
+            
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_params = {'C': C, 'gamma': gamma}
+                best_model_svm = svm
+    
+    print(f"[SVM] Melhores parâmetros: C={best_params['C']}, gamma={best_params['gamma']}")
+    print(f"[SVM] Acurácia na validação: {best_val_acc:.4f}")
+    
+    # Retreinar com dados de treino + validação
+    X_train_val = np.vstack((X_train, X_val))
+    y_train_val = np.hstack((y_train, y_val))
+    
+    best_model_svm = SVC(kernel='rbf', C=best_params['C'], gamma=best_params['gamma'], 
+                         probability=True, random_state=42)
+    best_model_svm.fit(X_train_val, y_train_val)
+    
+    # Avaliação final
+    y_test_preds = best_model_svm.predict(X_test)
+    test_metrics = {
+        "accuracy": accuracy_score(y_test, y_test_preds),
+        "precision": precision_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "recall": recall_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "f1_score": f1_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "confusion_matrix": confusion_matrix(y_test, y_test_preds)
+    }
+    
+    print(f"[SVM] Accuracy no Teste: {test_metrics['accuracy']:.4f}")
+    print(f"[SVM] F1-Score no Teste: {test_metrics['f1_score']:.4f}")
+    print("="*80 + "\n")
+    
+    return best_params, test_metrics, best_model_svm, y_test_preds
+
+# ==================================================================================
+# 🔴 MELHORIA 2: Random Forest (Robustez e importância de features)
+# ==================================================================================
+def hyperparameter_tuning_rf(X_train, y_train, X_val, y_val, X_test, y_test):
+    """
+    Random Forest - oferece robustez, importância de features e menos overfitting.
+    Testa diferentes números de árvores e profundidades.
+    """
+    print("\n" + "="*80)
+    print("🔴 MELHORIA 2: Testando Random Forest")
+    print("="*80)
+    
+    # Grid de hiperparâmetros para Random Forest
+    n_estimators_values = [50, 100, 200]
+    max_depth_values = [10, 20, None]  # None = sem limite
+    
+    best_val_acc = 0
+    best_params = {'n_estimators': None, 'max_depth': None}
+    best_model_rf = None
+    
+    print(f"\n[RF] Testando {len(n_estimators_values) * len(max_depth_values)} combinações...")
+    
+    for n_est in n_estimators_values:
+        for depth in max_depth_values:
+            rf = RandomForestClassifier(n_estimators=n_est, max_depth=depth, 
+                                       random_state=42, n_jobs=-1)
+            rf.fit(X_train, y_train)
+            y_val_preds = rf.predict(X_val)
+            val_acc = accuracy_score(y_val, y_val_preds)
+            
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_params = {'n_estimators': n_est, 'max_depth': depth}
+                best_model_rf = rf
+    
+    print(f"[RF] Melhores parâmetros: n_estimators={best_params['n_estimators']}, "
+          f"max_depth={best_params['max_depth']}")
+    print(f"[RF] Acurácia na validação: {best_val_acc:.4f}")
+    
+    # Retreinar com dados de treino + validação
+    X_train_val = np.vstack((X_train, X_val))
+    y_train_val = np.hstack((y_train, y_val))
+    
+    best_model_rf = RandomForestClassifier(n_estimators=best_params['n_estimators'],
+                                           max_depth=best_params['max_depth'],
+                                           random_state=42, n_jobs=-1)
+    best_model_rf.fit(X_train_val, y_train_val)
+    
+    # Avaliação final
+    y_test_preds = best_model_rf.predict(X_test)
+    test_metrics = {
+        "accuracy": accuracy_score(y_test, y_test_preds),
+        "precision": precision_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "recall": recall_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "f1_score": f1_score(y_test, y_test_preds, average='weighted', zero_division=0),
+        "confusion_matrix": confusion_matrix(y_test, y_test_preds),
+        "feature_importance": best_model_rf.feature_importances_
+    }
+    
+    print(f"[RF] Accuracy no Teste: {test_metrics['accuracy']:.4f}")
+    print(f"[RF] F1-Score no Teste: {test_metrics['f1_score']:.4f}")
+    
+    # Mostrar top 10 features mais importantes
+    if hasattr(best_model_rf, 'feature_importances_'):
+        top_features = np.argsort(best_model_rf.feature_importances_)[-10:][::-1]
+        print(f"[RF] Top 10 features mais importantes:")
+        for idx, feat_idx in enumerate(top_features, 1):
+            print(f"     {idx}. Feature {feat_idx}: {best_model_rf.feature_importances_[feat_idx]:.4f}")
+    
+    print("="*80 + "\n")
+    
+    return best_params, test_metrics, best_model_rf, y_test_preds
+
+# ==================================================================================
+# 🟡 MELHORIA 3: Leave-One-Subject-Out (LOSO) - Avaliação mais realista
+# ==================================================================================
+def loso_cross_validation(X_all, y_all, participants_all, model_type='knn', k=5):
+    """
+    Leave-One-Subject-Out (LOSO) - Deixa um participante inteiro para teste.
+    Mais realista que Within-Subject pois testa generalização entre participantes.
+    
+    Args:
+        X_all: Features de todos os dados
+        y_all: Labels de todos os dados
+        participants_all: Array com ID do participante de cada amostra
+        model_type: 'knn', 'svm', ou 'rf'
+        k: Número de vizinhos (para k-NN apenas)
+    """
+    print("\n" + "="*80)
+    print("🟡 MELHORIA 3: Leave-One-Subject-Out (LOSO) Cross-Validation")
+    print("="*80)
+    print(f"Modelo: {model_type.upper()}")
+    print(f"Testando com {len(np.unique(participants_all))} participantes...")
+    
+    unique_subjects = np.unique(participants_all)
+    accuracies_loso = []
+    f1_scores_loso = []
+    
+    for test_subject in unique_subjects:
+        # Dividir: treino (todos exceto subject), teste (apenas subject)
+        test_mask = participants_all == test_subject
+        train_mask = ~test_mask
+        
+        X_train_loso = X_all[train_mask]
+        y_train_loso = y_all[train_mask]
+        X_test_loso = X_all[test_mask]
+        y_test_loso = y_all[test_mask]
+        
+        # Normalizar
+        scaler_loso = StandardScaler()
+        X_train_loso = scaler_loso.fit_transform(X_train_loso)
+        X_test_loso = scaler_loso.transform(X_test_loso)
+        
+        # Treinar modelo apropriado
+        if model_type == 'knn':
+            model = KNeighborsClassifier(n_neighbors=k)
+        elif model_type == 'svm':
+            model = SVC(kernel='rbf', C=10, gamma='scale', probability=True)
+        elif model_type == 'rf':
+            model = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42)
+        else:
+            raise ValueError(f"Model type '{model_type}' não reconhecido")
+        
+        model.fit(X_train_loso, y_train_loso)
+        
+        # Avaliar
+        y_pred_loso = model.predict(X_test_loso)
+        acc_loso = accuracy_score(y_test_loso, y_pred_loso)
+        f1_loso = f1_score(y_test_loso, y_pred_loso, average='weighted', zero_division=0)
+        
+        accuracies_loso.append(acc_loso)
+        f1_scores_loso.append(f1_loso)
+    
+    # Estatísticas finais
+    mean_acc = np.mean(accuracies_loso)
+    std_acc = np.std(accuracies_loso)
+    mean_f1 = np.mean(f1_scores_loso)
+    std_f1 = np.std(f1_scores_loso)
+    
+    print(f"\n[LOSO] Resultados por participante:")
+    for idx, subject in enumerate(unique_subjects):
+        print(f"       Participante {int(subject):2d}: Acc = {accuracies_loso[idx]:.4f}, "
+              f"F1 = {f1_scores_loso[idx]:.4f}")
+    
+    print(f"\n[LOSO] Accuracy: {mean_acc:.4f} ± {std_acc:.4f}")
+    print(f"[LOSO] F1-Score: {mean_f1:.4f} ± {std_f1:.4f}")
+    print("="*80 + "\n")
+    
+    loso_metrics = {
+        'accuracies': accuracies_loso,
+        'f1_scores': f1_scores_loso,
+        'mean_acc': mean_acc,
+        'std_acc': std_acc,
+        'mean_f1': mean_f1,
+        'std_f1': std_f1
+    }
+    
+    return loso_metrics
+
+# ==================================================================================
+# 🟢 MELHORIA 4: Calibração de Probabilidades (Platt Scaling)
+# ==================================================================================
+def train_evaluate_with_calibration(X_train, y_train, X_val, y_val, X_test, y_test, 
+                                    model_type='knn', k=5):
+    """
+    Adiciona calibração Platt scaling para obter probabilidades mais realistas.
+    Essencial para aplicações com risco (confiança real da predição).
+    
+    Args:
+        model_type: 'knn', 'svm', ou 'rf'
+        k: Número de vizinhos (para k-NN apenas)
+    """
+    print("\n" + "="*80)
+    print("🟢 MELHORIA 4: Calibração de Probabilidades (Platt Scaling)")
+    print("="*80)
+    print(f"Modelo Base: {model_type.upper()}")
+    
+    # Criar modelo base
+    if model_type == 'knn':
+        base_model = KNeighborsClassifier(n_neighbors=k)
+    elif model_type == 'svm':
+        base_model = SVC(kernel='rbf', C=10, gamma='scale')
+    elif model_type == 'rf':
+        base_model = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42)
+    else:
+        raise ValueError(f"Model type '{model_type}' não reconhecido")
+    
+    # Calibrar usando dados de validação
+    calibrated_model = CalibratedClassifierCV(base_model, method='sigmoid', cv=5)
+    
+    X_train_val = np.vstack((X_train, X_val))
+    y_train_val = np.hstack((y_train, y_val))
+    
+    calibrated_model.fit(X_train_val, y_train_val)
+    
+    # Predições e confiança
+    y_pred = calibrated_model.predict(X_test)
+    y_pred_proba = calibrated_model.predict_proba(X_test)
+    
+    # Calcular confiança (probabilidade máxima)
+    confidence = np.max(y_pred_proba, axis=1)
+    mean_confidence = np.mean(confidence)
+    
+    # Métricas
+    test_metrics = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred, average='weighted', zero_division=0),
+        "recall": recall_score(y_test, y_pred, average='weighted', zero_division=0),
+        "f1_score": f1_score(y_test, y_pred, average='weighted', zero_division=0),
+        "mean_confidence": mean_confidence,
+        "min_confidence": np.min(confidence),
+        "max_confidence": np.max(confidence)
+    }
+    
+    print(f"\n[CALIB] Accuracy: {test_metrics['accuracy']:.4f}")
+    print(f"[CALIB] F1-Score: {test_metrics['f1_score']:.4f}")
+    print(f"[CALIB] Confiança Média: {test_metrics['mean_confidence']:.4f}")
+    print(f"[CALIB] Confiança Min-Max: [{test_metrics['min_confidence']:.4f}, {test_metrics['max_confidence']:.4f}]")
+    print("="*80 + "\n")
+    
+    return calibrated_model, test_metrics, y_pred, confidence
+
         
 # Requisito 5.2: Report and analysis of results
+
 
 def report_results(datasets_dict, participants=None, n_iterations=1):
     results= {}
